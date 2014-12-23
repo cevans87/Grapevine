@@ -1,5 +1,5 @@
-#ifndef _GV_UTIL_H_
-#define _GV_UTIL_H_
+#ifndef GV_UTIL_H
+#define GV_UTIL_H
 
 #include "gv_type.h"
 
@@ -32,10 +32,7 @@ char *gv_error_string(GV_ERROR err);
         }                                                                   \
     } while (0)
 
-int gv_safe_free(void *mem);
-//char *gv_error_string(GV_ERROR err);
-
-//extern char *gv_error_string_mapping[GV_NUM_ERRORS];
+int gv_safe_free(void **mem);
 
 #endif
 

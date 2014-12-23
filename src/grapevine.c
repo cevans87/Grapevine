@@ -4,6 +4,7 @@
 #include "gv_type.h"
 #include "gv_util.h"
 
+#ifdef GV_MAIN
 INT
 main(INT argc, char *argv[])
 {
@@ -24,3 +25,4 @@ out:
 error:
     goto out;
 }
+#endif

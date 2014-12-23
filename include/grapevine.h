@@ -1,5 +1,5 @@
-#ifndef _GRAPEVINE_H_
-#define _GRAPEVINE_H_
+#ifndef GRAPEVINE_H
+#define GRAPEVINE_H
 
 #endif
 
