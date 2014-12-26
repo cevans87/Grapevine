@@ -1,6 +1,7 @@
-#ifndef _GV_TEST_H_
-#define _GV_TEST_H_
-#include "gv_type.h"
+#ifndef GV_TEST_HPP_
+#define GV_TEST_HPP_
+
+#include "gv_type.hpp"
 
 #define GV_TEST_INIT() int success = 0; int tests = 0; bool passed_test;
 
@@ -66,7 +67,7 @@
         }                                                                   \
     } while (0)
 
-#define 
+//#define 
 
-#endif
+#endif // GV_TEST_HPP_
 

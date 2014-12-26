@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "gv_type.h"
-#include "gv_util.h"
+#include "gv_type.hpp"
+#include "gv_util.hpp"
 
 
-INT
+int
 gv_safe_free(void **mem)
 {
     if (NULL == mem)

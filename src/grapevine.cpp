@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "gv_type.h"
-#include "gv_util.h"
+#include "gv_type.hpp"
+#include "gv_util.hpp"
 
 #ifdef GV_MAIN
-INT
-main(INT argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     char *p_error = NULL;
     GV_ERROR error = 2;

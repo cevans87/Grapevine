@@ -1,7 +1,7 @@
-#ifndef GV_UTIL_H
-#define GV_UTIL_H
+#ifndef GV_UTIL_HPP_
+#define GV_UTIL_HPP_
 
-#include "gv_type.h"
+#include "gv_type.hpp"
 
 #define GV_ERROR_BUF_SIZE (64)
 //#define GV_ERROR_STRING(err) (#err)
@@ -19,8 +19,6 @@
     } while (0)
 #endif
 
-char *gv_error_string(GV_ERROR err);
-
 #define BAIL_ON_GV_ERROR(err)                                               \
     do                                                                      \
     {                                                                       \
@@ -34,5 +32,5 @@ char *gv_error_string(GV_ERROR err);
 
 int gv_safe_free(void **mem);
 
-#endif
+#endif // GV_UTIL_HPP_
 
