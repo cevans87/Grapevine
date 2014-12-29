@@ -4,5 +4,7 @@
 int
 main(int argc, char *argv[])
 {
+    assert(argc == argc);
+    assert(argv == argv);
     return 0;
 }

@@ -1,12 +1,5 @@
-#ifndef GV_UTIL_HPP_
-#define GV_UTIL_HPP_
-
-#include "gv_type.hpp"
-
-#define GV_ERROR_BUF_SIZE (64)
-//#define GV_ERROR_STRING(err) (#err)
-
-//char p_error_buffer[GV_ERROR_BUF_SIZE];
+#ifndef GRAPEVINE_SRC_GV_UTIL_HPP_
+#define GRAPEVINE_SRC_GV_UTIL_HPP_
 
 #ifndef GV_DEBUG
 #define GV_DEBUG_PRINT(fmt, ...)
@@ -32,5 +25,5 @@
 
 int gv_safe_free(void **mem);
 
-#endif // GV_UTIL_HPP_
+#endif // GRAPEVINE_SRC_GV_UTIL_HPP_
 

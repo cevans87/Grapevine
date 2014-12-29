@@ -1,5 +1,5 @@
-#ifndef GV_TEST_HPP_
-#define GV_TEST_HPP_
+#ifndef GRAPEVINE_TEST_GV_TEST_HPP_
+#define GRAPEVINE_TEST_GV_TEST_HPP_
 
 #include "gv_type.hpp"
 
@@ -67,7 +67,5 @@
         }                                                                   \
     } while (0)
 
-//#define 
-
-#endif // GV_TEST_HPP_
+#endif // GRAPEVINE_TEST_HPP_GV_TEST_HPP_
 

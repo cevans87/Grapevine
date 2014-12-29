@@ -1,9 +1,11 @@
-#ifndef GV_TYPE_HPP_
-#define GV_TYPE_HPP_
+#ifndef GRAPEVINE_TEST_GV_TYPE_HPP_
+#define GRAPEVINE_TEST_GV_TYPE_HPP_
 
 #include <memory>
-#include <vector>
 #include <stdint.h>
+
+#define IN
+#define OUT
 
 // Simple expansion for GV_ERROR enum definition. Redefine later with #
 // expansion for gv_error_strings definition.
@@ -22,5 +24,5 @@ enum GV_ERROR : int
 
 extern char const * const gv_error_strings[];
 
-#endif // GV_TYPE_HPP_
+#endif // GRAPEVINE_TEST_GV_TYPE_HPP_
 

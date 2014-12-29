@@ -33,16 +33,16 @@ set(c-sources-test
 ##############################################################################
 
 #add_definitions(-DGV_MAIN)
-add_definitions(-DGV_DEBUG=20)
 
+set(GV_FLAGS "${GV_FLAGS} -fPIC")
 # Clang
 if (GV_COMPILER STREQUAL "clang++")
-    set(GV_CLANG_FLAGS "${GV_CLANG_FLAGS} --std=c++11")
-    set(GV_CLANG_FLAGS "${GV_CLANG_FLAGS} -Weverything")
-    set(GV_CLANG_FLAGS "${GV_CLANG_FLAGS} -Wno-variadic-macros")
-    set(GV_CLANG_FLAGS "${GV_CLANG_FLAGS} -Wno-gnu-zero-variadic-macro-arguments")
-    set(GV_CLANG_FLAGS "${GV_CLANG_FLAGS} -Wno-c++98-compat-pedantic")
-    list(APPEND CMAKE_CXX_FLAGS ${GV_CLANG_FLAGS})
+    set(GV_FLAGS "${GV_FLAGS} --std=c++11")
+    set(GV_FLAGS "${GV_FLAGS} -Weverything")
+    set(GV_FLAGS "${GV_FLAGS} -Wno-variadic-macros")
+    set(GV_FLAGS "${GV_FLAGS} -Wno-gnu-zero-variadic-macro-arguments")
+    set(GV_FLAGS "${GV_FLAGS} -Wno-c++98-compat-pedantic")
+    list(APPEND CMAKE_CXX_FLAGS ${GV_FLAGS})
 endif()
 
 ##############################################################################
@@ -51,8 +51,10 @@ endif()
 # Ex: In build folder, cmake -DCMAKE_BUILD_TYPE=Debug ..
 ##############################################################################
 if (GV_BUILD STREQUAL "Debug" OR GV_BUILD STREQUAL "DebugTest")
+    add_definitions(
+        -g
+        -DGV_DEBUG=20)
     message("Building Debug")
-    list(APPEND CMAKE_CXX_FLAGS ${GV_DEBUG_FLAGS})
 endif()
 
 if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
@@ -60,7 +62,6 @@ if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
     foreach(source ${c-sources-test})
         list(APPEND sources-test ${CMAKE_CURRENT_SOURCE_DIR}/test/${source})
     endforeach()
-    list(APPEND CMAKE_CXX_FLAGS ${GV_DEBUG_FLAGS})
 endif()
 
 ##############################################################################
@@ -72,10 +73,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/)
 
 #set(GV_CMAKE_INCLUDE_DIRS "${GV_CMAKE_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR}/include")
 #set(GV_CMAKE_INCLUDE_DIRS "${GV_CMAKE_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR}/src")
-message(cflags: ${CMAKE_CXX_FLAGS})
+#message(cflags: ${CMAKE_CXX_FLAGS})
 
 include(CheckIncludeFiles)
 check_include_files(zmq.h GV_HAVE_ZMQ)
+check_include_files(dns_sd.h GV_HAVE_ZEROCONF)
 
 foreach(source ${c-sources})
     list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/src/${source})
@@ -84,8 +86,9 @@ endforeach()
 set(public_headers include/grapevine.h)
 set(private_headers ${CMAKE_CURRENT_SOURCE_DIR}/src/gv_util.h)
 
+add_library(grapevine SHARED ${sources})
+
 if (CMAKE_BUILD_TYPE STREQUAL "Test" OR CMAKE_BUILD_TYPE STREQUAL "DebugTest")
+    target_link_libraries(grapevine)
     add_executable(test_grapevine ${sources} ${sources-test})
-else()
-    add_library(grapevine ${sources})
 endif()
