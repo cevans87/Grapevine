@@ -10,18 +10,18 @@ enum GV_FLAG : unsigned int
 class GVPublisher
 {
     public:
-        GV_ERROR publish_message(GV_FLAG flags, char const *msg);
-        GV_ERROR register_service(char const *srv);
+        int publish_message(GV_FLAG flags, char const *msg);
+        int register_service(char const *srv);
     private:
 };
 
 class GVSubscriber
 {
     public:
-        GV_ERROR subscribe(char const &srv);
-        GV_ERROR get_last_message(GV_FLAG flags, char &msg);
-        GV_ERROR get_next_message(GV_FLAG flags, char &msg);
-        GV_ERROR get_message_at(int idx, char &msg);
+        int subscribe(char const &srv);
+        int get_last_message(GV_FLAG flags, char &msg);
+        int get_next_message(GV_FLAG flags, char &msg);
+        int get_message_at(int idx, char &msg);
     private:
 };
 

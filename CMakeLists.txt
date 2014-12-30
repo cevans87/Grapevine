@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project (grapevine)
 
+# FIXME cevans87: stop forcing clang++, just prefer it.
 if (NOT GV_COMPILER)
     set(GV_COMPILER "clang++")
 endif()
@@ -23,18 +24,27 @@ set(c-sources
         gv_type.cpp)
 
 set(c-sources-test
-        test_gv_util.cpp)
+        gv_test.cpp
+        test_gv_util.cpp
+        test_gv_type.cpp)
 
-#set(c-headers-test
-#        gv_util.h)
+foreach(source ${c-sources})
+    list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/src/${source})
+endforeach()
+
+foreach(source ${c-sources-test})
+    list(APPEND sources-test ${CMAKE_CURRENT_SOURCE_DIR}/test/${source})
+endforeach()
 
 ##############################################################################
-# Definitions and Compiler Warnings
+# Compiler Flags
 ##############################################################################
-
-#add_definitions(-DGV_MAIN)
 
 set(GV_FLAGS "${GV_FLAGS} -fPIC")
+
+##############################################################################
+# Compiler Warnings
+##############################################################################
 # Clang
 if (GV_COMPILER STREQUAL "clang++")
     set(GV_FLAGS "${GV_FLAGS} --std=c++11")
@@ -59,36 +69,42 @@ endif()
 
 if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
     message("Building Test")
-    foreach(source ${c-sources-test})
-        list(APPEND sources-test ${CMAKE_CURRENT_SOURCE_DIR}/test/${source})
-    endforeach()
 endif()
 
 ##############################################################################
-# Includes
+# Include Directories
 ##############################################################################
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/)
 
-#set(GV_CMAKE_INCLUDE_DIRS "${GV_CMAKE_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR}/include")
-#set(GV_CMAKE_INCLUDE_DIRS "${GV_CMAKE_INCLUDE_DIRS} -I${CMAKE_CURRENT_SOURCE_DIR}/src")
-#message(cflags: ${CMAKE_CXX_FLAGS})
-
+##############################################################################
+# Check for out-of-project includes
+##############################################################################
 include(CheckIncludeFiles)
+
+# FIXME cevans87: check_include_files macro broken in foreach, so it has to be
+# done outside of a loop. Find a cleaner way?
 check_include_files(zmq.h GV_HAVE_ZMQ)
 check_include_files(dns_sd.h GV_HAVE_ZEROCONF)
 
-foreach(source ${c-sources})
-    list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/src/${source})
+set(GV_MUST_HAVE
+        GV_HAVE_ZMQ
+        GV_HAVE_ZEROCONF)
+
+foreach(package ${GV_MUST_HAVE})
+    if (NOT ${package})
+        message(FATAL_ERROR "Failed requirement: ${package}")
+    endif()
 endforeach()
 
-set(public_headers include/grapevine.h)
-set(private_headers ${CMAKE_CURRENT_SOURCE_DIR}/src/gv_util.h)
+##############################################################################
+# Build stuff
+##############################################################################
 
 add_library(grapevine SHARED ${sources})
 
-if (CMAKE_BUILD_TYPE STREQUAL "Test" OR CMAKE_BUILD_TYPE STREQUAL "DebugTest")
+if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
     target_link_libraries(grapevine)
-    add_executable(test_grapevine ${sources} ${sources-test})
+    add_executable(test_grapevine ${sources-test})
 endif()

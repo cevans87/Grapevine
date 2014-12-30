@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdint.h>
 
+// Parameter input/output hints for function prototypes and definitions.
 #define IN
 #define OUT
 

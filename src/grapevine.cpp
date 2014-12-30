@@ -7,45 +7,45 @@
 #include "gv_util.hpp"
 #include "grapevine.h"
 
-static int iTimeOut = 100000000;
+//static int iTimeOut = 100000000;
 
-static void
-gv_handle_events(
-    IN DNSServiceRef serviceRef);
+//static void
+//gv_handle_events(
+//    IN DNSServiceRef serviceRef);
 
-static void
-gv_handle_events(
-    IN DNSServiceRef serviceRef)
-{
-    int dns_sd_fd = DNSServiceRefSockFD(serviceRef);
-    int nfds = dns_sd_fd + 1;
-    fd_set readfds;
-    struct timeval tv;
-    int result;
-    bool bStopNow = false;
-
-    while(!bStopNow)
-    {
-        FD_ZERO(&readfds);
-        FD_SET(dns_sd_fd, &readfds);
-        tv.tv_sec = iTimeOut;
-        tv.tv_usec = 0;
-        result = select(nfds, &readfds, reinterpret_cast<fd_set *>(NULL),
-                reinterpret_cast<fd_set *>(NULL), &tv);
-        if (0 < result)
-        {
-            DNSServiceErrorType err = kDNSServiceErr_NoError;
-            if (FD_ISSET(dns_sd_fd, &readfds))
-            {
-                err = DNSServiceProcessResult(serviceRef);
-            }
-            if (err)
-            {
-                bStopNow = true;
-            }
-        }
-    }
-}
+//static void
+//gv_handle_events(
+//    IN DNSServiceRef serviceRef)
+//{
+//    int dns_sd_fd = DNSServiceRefSockFD(serviceRef);
+//    int nfds = dns_sd_fd + 1;
+//    fd_set readfds;
+//    struct timeval tv;
+//    int result;
+//    bool bStopNow = false;
+//
+//    while(!bStopNow)
+//    {
+//        FD_ZERO(&readfds);
+//        FD_SET(dns_sd_fd, &readfds);
+//        tv.tv_sec = iTimeOut;
+//        tv.tv_usec = 0;
+//        result = select(nfds, &readfds, reinterpret_cast<fd_set *>(NULL),
+//                reinterpret_cast<fd_set *>(NULL), &tv);
+//        if (0 < result)
+//        {
+//            DNSServiceErrorType err = kDNSServiceErr_NoError;
+//            if (FD_ISSET(dns_sd_fd, &readfds))
+//            {
+//                err = DNSServiceProcessResult(serviceRef);
+//            }
+//            if (err)
+//            {
+//                bStopNow = true;
+//            }
+//        }
+//    }
+//}
 
 #ifdef GV_MAIN
 int
