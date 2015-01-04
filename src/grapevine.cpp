@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <assert.h>
 #include <dns_sd.h>
-#include <zmq.h>
 
 #include "gv_type.hpp"
 #include "gv_util.hpp"
-#include "grapevine.h"
+#include "grapevine.hpp"
 
 //static int iTimeOut = 100000000;
 

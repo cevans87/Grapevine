@@ -20,12 +20,14 @@ message("Using compiler ${CMAKE_CXX_COMPILER}")
 ##############################################################################
 set(c-sources
         grapevine.cpp
+        gv_browser.cpp
         gv_util.cpp
         gv_type.cpp)
 
 set(c-sources-test
         gv_test.cpp
         test_gv_util.cpp
+        test_gv_browser.cpp
         test_gv_type.cpp)
 
 foreach(source ${c-sources})
@@ -85,7 +87,7 @@ include(CheckIncludeFiles)
 
 # FIXME cevans87: check_include_files macro broken in foreach, so it has to be
 # done outside of a loop. Find a cleaner way?
-check_include_files(zmq.h GV_HAVE_ZMQ)
+check_include_files(zmq.hpp GV_HAVE_ZMQ)
 check_include_files(dns_sd.h GV_HAVE_ZEROCONF)
 
 set(GV_MUST_HAVE

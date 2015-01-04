@@ -1,5 +1,8 @@
-#ifndef GRAPEVINE_INCLUDE_GRAPEVINE_H_
-#define GRAPEVINE_INCLUDE_GRAPEVINE_H_
+#ifndef GRAPEVINE_INCLUDE_GRAPEVINE_HPP_
+#define GRAPEVINE_INCLUDE_GRAPEVINE_HPP_
+#include <zmq.hpp>
+
+#include "gv_browser.hpp"
 
 enum GV_FLAG : unsigned int
 {
@@ -13,6 +16,8 @@ class GVPublisher
         int publish_message(GV_FLAG flags, char const *msg);
         int register_service(char const *srv);
     private:
+        zmq::context_t _zmq_context;
+        GVBrowser _gv_browser;
 };
 
 class GVSubscriber
@@ -23,7 +28,9 @@ class GVSubscriber
         int get_next_message(GV_FLAG flags, char &msg);
         int get_message_at(int idx, char &msg);
     private:
+        zmq::context_t _zmq_context;
+        GVBrowser _gv_browser;
 };
 
-#endif // GRAPEVINE_INCLUDE_GRAPEVINE_H_
+#endif // GRAPEVINE_INCLUDE_GRAPEVINE_HPP_
 

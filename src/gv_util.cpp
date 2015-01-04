@@ -11,7 +11,7 @@ gv_safe_free(void **mem)
 {
     if (NULL == mem)
     {
-        assert(false); // FIXME do I really want to exit like this?
+        assert(false); // FIXME do we really want to exit like this?
     }
     if (NULL != *mem)
     {
