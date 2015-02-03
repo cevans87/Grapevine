@@ -60,8 +60,6 @@ main(int argc, char *argv[])
     printf("%i\n", GV_NUM_ERRORS);
     BAIL_ON_GV_ERROR(error);
 
-    return 0;
-
 out:
     return 0;
 
