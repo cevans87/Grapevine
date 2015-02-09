@@ -43,17 +43,27 @@ endforeach()
 ##############################################################################
 
 set(GV_FLAGS "${GV_FLAGS} -fPIC")
+if (GV_COMPILER STREQUAL "clang++")
+    set(GV_FLAGS "${GV_FLAGS} --std=c++11")
+    set(GV_FLAGS "${GV_FLAGS} --stdlib=libc++")
+endif()
 
 ##############################################################################
 # Compiler Warnings
 ##############################################################################
 # Clang
 if (GV_COMPILER STREQUAL "clang++")
-    set(GV_FLAGS "${GV_FLAGS} --std=c++11")
+    # FIXME cevans87: Most of these warnings are only annoying in one place,
+    # and might be useful in the future. Use pragma directive where
+    # appropriate.
     set(GV_FLAGS "${GV_FLAGS} -Weverything")
     set(GV_FLAGS "${GV_FLAGS} -Wno-variadic-macros")
     set(GV_FLAGS "${GV_FLAGS} -Wno-gnu-zero-variadic-macro-arguments")
     set(GV_FLAGS "${GV_FLAGS} -Wno-c++98-compat-pedantic")
+    set(GV_FLAGS "${GV_FLAGS} -Wno-zero-length-array")
+
+    # gtest annoyances
+    set(GV_FLAGS "${GV_FLAGS} -Wno-global-constructors")
     list(APPEND CMAKE_CXX_FLAGS ${GV_FLAGS})
 endif()
 
@@ -64,8 +74,8 @@ endif()
 ##############################################################################
 if (GV_BUILD STREQUAL "Debug" OR GV_BUILD STREQUAL "DebugTest")
     add_definitions(
-        -g
-        -DGV_DEBUG=20)
+            -g
+            -DGV_DEBUG=20)
     message("Building Debug")
 endif()
 
@@ -76,17 +86,34 @@ endif()
 ##############################################################################
 # Include Directories
 ##############################################################################
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/test/)
+include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/)
+if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
+    include_directories(
+            ${CMAKE_CURRENT_SOURCE_DIR}/test/)
+    include_directories(SYSTEM
+            ${CMAKE_CURRENT_SOURCE_DIR}/gtest/
+            ${CMAKE_CURRENT_SOURCE_DIR}/gtest/include/
+            ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/
+            ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/.libs/)
+    list(APPEND sources-test
+            ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/.libs/libgtest_main.so
+            ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/.libs/libgtest.so)
+    if (GV_COMPILER STREQUAL "clang++")
+        add_definitions(
+                -DGTEST_USE_OWN_TR1_TUPLE=1
+                -DGTEST_HAS_TR1_TUPLE=1)
+    endif()
+endif()
 
 ##############################################################################
 # Check for out-of-project includes
 ##############################################################################
 include(CheckIncludeFiles)
 
-# FIXME cevans87: check_include_files macro broken in foreach, so it has to be
-# done outside of a loop. Find a cleaner way?
+# XXX cevans87: check_include_files macro broken in foreach?
 check_include_files(zmq.hpp GV_HAVE_ZMQ)
 check_include_files(dns_sd.h GV_HAVE_ZEROCONF)
 
@@ -94,11 +121,11 @@ set(GV_MUST_HAVE
         GV_HAVE_ZMQ
         GV_HAVE_ZEROCONF)
 
-foreach(package ${GV_MUST_HAVE})
-    if (NOT ${package})
-        message(FATAL_ERROR "Failed requirement: ${package}")
-    endif()
-endforeach()
+#foreach(package ${GV_MUST_HAVE})
+#    if (NOT ${package})
+#        message(FATAL_ERROR "Failed requirement: ${package}")
+#    endif()
+#endforeach()
 
 ##############################################################################
 # Build stuff
@@ -107,6 +134,8 @@ endforeach()
 add_library(grapevine SHARED ${sources})
 
 if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
-    target_link_libraries(grapevine)
     add_executable(test_grapevine ${sources-test})
+    target_link_libraries(test_grapevine
+        ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/.libs/libgtest.a
+        pthread)
 endif()
