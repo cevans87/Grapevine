@@ -10,17 +10,17 @@ enum GV_FLAG : unsigned int
     GV_FLAG_NO_BLOCK        = 1 << 1
 };
 
-class GVPublisher
+class GV_Publisher
 {
     public:
         int publish_message(GV_FLAG flags, char const *msg);
         int register_service(char const *srv);
     private:
         zmq::context_t _zmq_context;
-        GVBrowser _gv_browser;
+        GV_Browser _gv_browser;
 };
 
-class GVSubscriber
+class GV_Subscriber
 {
     public:
         int subscribe(char const &srv);
@@ -29,7 +29,7 @@ class GVSubscriber
         int get_message_at(int idx, char &msg);
     private:
         zmq::context_t _zmq_context;
-        GVBrowser _gv_browser;
+        GV_Browser _gv_browser;
 };
 
 #endif // GRAPEVINE_INCLUDE_GRAPEVINE_HPP_

@@ -136,6 +136,8 @@ add_library(grapevine SHARED ${sources})
 if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
     add_executable(test_grapevine ${sources-test})
     target_link_libraries(test_grapevine
+        grapevine
         ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/.libs/libgtest.a
-        pthread)
+        pthread
+        dns_sd)
 endif()

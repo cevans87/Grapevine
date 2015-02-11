@@ -1,5 +1,6 @@
 #ifndef GRAPEVINE_SRC_GV_UTIL_HPP_
 #define GRAPEVINE_SRC_GV_UTIL_HPP_
+#include <stdio.h>
 
 #ifndef GV_DEBUG
 #define GV_DEBUG_PRINT(fmt, ...)
