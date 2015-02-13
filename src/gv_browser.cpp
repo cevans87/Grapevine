@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <time.h>
 #include <sys/select.h>
 #include "gv_browser.hpp"
@@ -8,6 +9,10 @@ GV_Browser::GV_Browser()
     DNSServiceErrorType error;
     GV_DEBUG_PRINT("about to browse");
     error = browse();
+// FIXME cevans87: This doesn't have the desired effect... Shut up Avahi!
+#ifdef GV_WITH_AVAHI
+    setenv("AVAHI_COMPAT_NOWARN", "1", true);
+#endif // GV_WITH_AVAHI
     if (error)
     {
         GV_DEBUG_PRINT("DNSServiceErrorType error (%d) on browse", error);
