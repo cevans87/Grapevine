@@ -8,6 +8,8 @@
 TEST(MyTest, FirstTest) {
     fprintf(stderr, "about to create GV_Browser\n");
     UP_GV_Browser upBrowser = UP_GV_Browser(new GV_Browser());
+    fprintf(stderr, "about to browse\n");
+    //upBrowser->enable();
     using std::chrono::high_resolution_clock;
     using std::chrono::seconds;
     fprintf(stderr, "about to sleep\n");

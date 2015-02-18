@@ -2,7 +2,8 @@
 #define GRAPEVINE_TEST_GV_TEST_HPP_
 
 #include "gv_type.hpp"
-#include "test_gv_browser.hpp"
+#include "test_gv_zeroconf.hpp"
+//#include "test_gv_browser.hpp"
 
 /*
 #define GV_TEST_INIT() int success = 0; int tests = 0; bool passed_test;

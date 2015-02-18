@@ -20,14 +20,14 @@ message("Using compiler ${CMAKE_CXX_COMPILER}")
 ##############################################################################
 set(c-sources
         grapevine.cpp
-        gv_browser.cpp
+        gv_zeroconf.cpp
         gv_util.cpp
         gv_type.cpp)
 
 set(c-sources-test
         gv_test.cpp
+        test_gv_zeroconf.cpp
         test_gv_util.cpp
-        test_gv_browser.cpp
         test_gv_type.cpp)
 
 foreach(source ${c-sources})

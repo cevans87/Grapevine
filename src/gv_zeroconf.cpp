@@ -1,23 +1,15 @@
 #include <time.h>
 #include <sys/select.h>
+#include <assert.h>
 
 #include <future>
+#include <functional>
 
-#include "gv_browser.hpp"
+#include "gv_zeroconf.hpp"
 #include "gv_util.hpp"
 
-GV_ERROR
-GV_MDNSHander setBrowseCallback(
-    IN std::function<void()> callback
-    )
-{
-    self._browseCallback = callback;
-    return GV_ERROR_SUCCESS;
-}
-
-
 void
-GV_Browser::DNSServiceBrowseCallback(
+GV_MDNSHandler::browseCallback(
     IN DNSServiceRef service,
     IN DNSServiceFlags flags,
     IN uint32_t interfaceIndex,
@@ -28,56 +20,31 @@ GV_Browser::DNSServiceBrowseCallback(
     IN void *context
     )
 {
-    if (NULL == context)
+    GV_MDNSHandler *self = reinterpret_cast<GV_MDNSHandler *>(context);
+    GV_DEBUG_PRINT("Browse callback initiated");
+    if (nullptr == self)
     {
         GV_DEBUG_PRINT("No context given.");
         return;
     }
-    else if (nullptr == reinterpret_cast<GV_Browser *>(context)->_mCallback)
-    {
-        GV_DEBUG_PRINT("No callback set.");
-        return;
-    }
-
-    reinterpret_cast<GV_Browser *>(context)->_mCallback(
-            service,
-            flags,
-            interfaceIndex,
-            errorCode,
-            name,
-            type,
-            domain,
-            reinterpret_cast<GV_Browser *>(context)->_mContext);
+    //else if (nullptr == self->_mCallback)
+    //{
+    //    GV_DEBUG_PRINT("No callback set.");
+    //    return;
+    //}
 }
 
-void
-GV_Browser::DNSServiceBrowseCallback(
-    IN DNSServiceRef service,
-    IN DNSServiceFlags flags,
-    IN uint32_t interfaceIndex,
-    IN DNSServiceErrorType errorCode,
-    IN const char *name,
-    IN const char *type,
-    IN const char *domain
+GV_ERROR
+GV_MDNSHandler::setBrowseCallback(
+    IN gv_browse_callback callback
     )
 {
-    if (errorCode != kDNSServiceErr_NoError)
-    {
-        GV_DEBUG_PRINT("DNSServiceErrorType error (%d) on browse", errorCode);
-        return;
-    }
-
-    GV_DEBUG_PRINT("%-7s iface:%d %s.%s%s%s",
-            (flags & kDNSServiceFlagsAdd) ? "ADD" : "REMOVE",
-            interfaceIndex,
-            name,
-            type,
-            domain,
-            (flags & kDNSServiceFlagsMoreComing) ? "MORE" : "");
+    _browseCallback = callback;
+    return GV_ERROR_SUCCESS;
 }
 
-DNSServiceErrorType
-GV_Browser::browse()
+GV_ERROR
+GV_MDNSHandler::enableBrowse()
 {
     DNSServiceErrorType error;
     GV_DEBUG_PRINT("About to call zeroconf browse");
@@ -88,7 +55,7 @@ GV_Browser::browse()
             "_grapevine._tcp", // regtype,
             // FIXME cevans87: Implement more than link-local
             "local",       // domain,
-            DNSServiceBrowseCallback,
+            _browseCallback,
             reinterpret_cast<void *>(this)            // context
             );
     GV_DEBUG_PRINT("DNSServiceBrowse returned with error: %d", error);
@@ -98,11 +65,11 @@ GV_Browser::browse()
         DNSServiceRefDeallocate(_serviceRef);
         _serviceRef = reinterpret_cast<DNSServiceRef>(NULL);
     }
-    return error;
+    return GV_ERROR_SUCCESS;
 }
 
 void
-GV_Browser::handleEvents(
+GV_MDNSHandler::handleEvents(
     IN DNSServiceRef serviceRef
     )
 {

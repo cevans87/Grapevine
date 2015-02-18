@@ -6,31 +6,42 @@
 #include "gv_type.hpp"
 
 // FIXME cevans87: What should the callback give?
-typedef int (*gv_callback)(void);
+using gv_browse_callback = DNSServiceBrowseReply;
+using gv_browse_context = void *;
 
 class GV_Browser
 {
     public:
         GV_Browser();
-        int enable();
+        GV_Browser(gv_browse_callback, gv_browse_context);
+        GV_ERROR enable();
         int disable();
-        int register_callback(gv_callback callback);
+        int register_callback(gv_browse_callback);
     private:
         void handleEvents(DNSServiceRef serviceRef);
-        // FIXME cevans87: make this non-static.
-        static void callback(
+        static void DNSServiceBrowseCallback(
+            IN DNSServiceRef service,
+            IN DNSServiceFlags flags,
+            IN uint32_t interfaceIndex,
+            IN DNSServiceErrorType errorCode,
+            IN const char *name,
+            IN const char *type,
+            IN const char *domain,
+            IN void *context
+            );
+        void DNSServiceBrowseCallback(
                 IN DNSServiceRef service,
                 IN DNSServiceFlags flags,
                 IN uint32_t interfaceIndex,
                 IN DNSServiceErrorType errorCode,
                 IN const char *name,
                 IN const char *type,
-                IN const char *domain,
-                IN void *context
+                IN const char *domain
                 );
         DNSServiceErrorType browse();
         DNSServiceRef _serviceRef;
-        gv_callback _callback;
+        gv_browse_callback _mCallback;
+        gv_browse_context _mContext;
 };
 
 using UP_GV_Browser = std::unique_ptr<GV_Browser>;
