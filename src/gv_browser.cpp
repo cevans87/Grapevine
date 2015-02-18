@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <time.h>
 #include <sys/select.h>
 
@@ -11,8 +12,22 @@ GV_MDNSHander setBrowseCallback(
     IN std::function<void()> callback
     )
 {
+<<<<<<< HEAD
     self._browseCallback = callback;
     return GV_ERROR_SUCCESS;
+=======
+    DNSServiceErrorType error;
+    GV_DEBUG_PRINT("about to browse");
+    error = browse();
+// FIXME cevans87: This doesn't have the desired effect... Shut up Avahi!
+#ifdef GV_WITH_AVAHI
+    setenv("AVAHI_COMPAT_NOWARN", "1", true);
+#endif // GV_WITH_AVAHI
+    if (error)
+    {
+        GV_DEBUG_PRINT("DNSServiceErrorType error (%d) on browse", error);
+    }
+>>>>>>> 0c843d2c304269e886d7d5ff7f6f8d9d643e74c4
 }
 
 

@@ -81,6 +81,11 @@ endif()
 
 if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
     message("Building Test")
+    if (GV_COMPILER STREQUAL "clang++")
+        add_definitions(
+                -DGTEST_USE_OWN_TR1_TUPLE=1
+                -DGTEST_HAS_TR1_TUPLE=1)
+    endif()
 endif()
 
 ##############################################################################
@@ -101,11 +106,6 @@ if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
     list(APPEND sources-test
             ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/.libs/libgtest_main.so
             ${CMAKE_CURRENT_SOURCE_DIR}/gtest/lib/.libs/libgtest.so)
-    if (GV_COMPILER STREQUAL "clang++")
-        add_definitions(
-                -DGTEST_USE_OWN_TR1_TUPLE=1
-                -DGTEST_HAS_TR1_TUPLE=1)
-    endif()
 endif()
 
 ##############################################################################
@@ -120,6 +120,10 @@ check_include_files(dns_sd.h GV_HAVE_ZEROCONF)
 set(GV_MUST_HAVE
         GV_HAVE_ZMQ
         GV_HAVE_ZEROCONF)
+
+# FIXME We're not always using Avahi
+add_definitions(
+        -DGV_WITH_AVAHI=1)
 
 #foreach(package ${GV_MUST_HAVE})
 #    if (NOT ${package})
