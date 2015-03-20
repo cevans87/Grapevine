@@ -3,8 +3,10 @@
 
 #include <dns_sd.h>
 #include <functional>
+#include <future>
 
 #include "gv_type.hpp"
+#include "gv_channel.hpp"
 
 using gv_browse_callback = DNSServiceBrowseReply;
 using gv_resolve_callback = DNSServiceResolveReply;
@@ -37,10 +39,11 @@ class GV_MDNSHandler
             IN char *pszServiceName);
 
     private:
-        gv_browse_callback _browseCallback;
-        DNSServiceRef _serviceRef; // FIXME get rid of this. We need more than one.
+        gv_browse_callback _mBrowseCallback;
+        std::future<void> _mFutureHandleEvents; // handleEvents
+        DNSServiceRef _mServiceRef; // FIXME get rid of this. We need more than one.
 
-        void handleEvents(
+        static void handleEvents(
             IN DNSServiceRef serviceRef);
         static void browseCallback(
             IN DNSServiceRef service,

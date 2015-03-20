@@ -22,6 +22,7 @@ set(c-sources
         grapevine.cpp
         gv_zeroconf.cpp
         gv_util.cpp
+        gv_channel.cpp
         gv_type.cpp)
 
 set(c-sources-test

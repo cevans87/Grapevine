@@ -4,10 +4,6 @@
 #include <memory>
 #include <stdint.h>
 
-// Parameter input/output hints for function prototypes and definitions.
-#define IN
-#define OUT
-
 // Simple expansion for GV_ERROR enum definition. Redefine later with #
 // expansion for gv_error_strings definition.
 #define GV_ERROR_SYMBOL(symbol) symbol

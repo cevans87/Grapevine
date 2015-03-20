@@ -2,6 +2,10 @@
 #define GRAPEVINE_SRC_GV_UTIL_HPP_
 #include <stdio.h>
 
+// Parameter input/output hints for function prototypes and definitions.
+#define IN
+#define OUT
+
 #ifndef GV_DEBUG
 #define GV_DEBUG_PRINT(fmt, ...)
 #else
@@ -25,6 +29,7 @@
     } while (0)
 
 int gv_safe_free(void **mem);
+int gv_safe_delete(void **mem);
 
 #endif // GRAPEVINE_SRC_GV_UTIL_HPP_
 

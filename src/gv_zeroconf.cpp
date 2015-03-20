@@ -39,7 +39,7 @@ GV_MDNSHandler::setBrowseCallback(
     IN gv_browse_callback callback
     )
 {
-    _browseCallback = callback;
+    _mBrowseCallback = callback;
     return GV_ERROR_SUCCESS;
 }
 
@@ -49,21 +49,24 @@ GV_MDNSHandler::enableBrowse()
     DNSServiceErrorType error;
     GV_DEBUG_PRINT("About to call zeroconf browse");
     error = DNSServiceBrowse(
-            &_serviceRef,   // sdRef,
+            &_mServiceRef,   // sdRef,
             0,              // flags,
             0,              // interfaceIndex,
             "_grapevine._tcp", // regtype,
             // FIXME cevans87: Implement more than link-local
             "local",       // domain,
-            _browseCallback,
+            _mBrowseCallback,
             reinterpret_cast<void *>(this)            // context
             );
     GV_DEBUG_PRINT("DNSServiceBrowse returned with error: %d", error);
     if (!error)
     {
-        handleEvents(_serviceRef);
-        DNSServiceRefDeallocate(_serviceRef);
-        _serviceRef = reinterpret_cast<DNSServiceRef>(NULL);
+        printf("about to call async\n");
+        _mFutureHandleEvents =
+                std::async(std::launch::async, handleEvents, _mServiceRef);
+        printf("Called async\n");
+        DNSServiceRefDeallocate(_mServiceRef);
+        _mServiceRef = reinterpret_cast<DNSServiceRef>(NULL);
     }
     return GV_ERROR_SUCCESS;
 }
@@ -89,9 +92,11 @@ GV_MDNSHandler::handleEvents(
                 reinterpret_cast<fd_set *>(NULL), &tv);
         if (result > 0 && FD_ISSET(dns_sd_fd, &readfds))
         {
-            auto handle = std::async(std::launch::async,
+            // FIXME future destructor at end of loop is blocking. Create
+            // thread without blocking.
+            std::future<int> handle = std::async(std::launch::async,
                     DNSServiceProcessResult, serviceRef);
-            //err = DNSServiceProcessResult(serviceRef);
+            err = DNSServiceProcessResult(serviceRef);
         }
     }
 }
