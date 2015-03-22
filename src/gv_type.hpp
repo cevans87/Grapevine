@@ -12,6 +12,7 @@
 #define GV_ERROR_SYMBOLS                                    \
     GV_ERROR_SYMBOL(GV_ERROR_SUCCESS),                      \
     GV_ERROR_SYMBOL(GV_ERROR_NOOP),                         \
+    GV_ERROR_SYMBOL(GV_ERROR_LOCK_UNAVAILABLE),             \
     GV_ERROR_SYMBOL(GV_ERROR_ALREADY_ENABLED),              \
     GV_ERROR_SYMBOL(GV_ERROR_ALREADY_DISABLED),             \
     GV_ERROR_SYMBOL(GV_NUM_ERRORS)        // KEEP IN LAST PLACE!

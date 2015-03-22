@@ -2,7 +2,8 @@
 #define GRAPEVINE_TEST_GV_TEST_HPP_
 
 #include "gv_type.hpp"
-#include "test_gv_zeroconf.hpp"
+#include "test_gv_channel.hpp"
+//#include "test_gv_zeroconf.hpp"
 //#include "test_gv_browser.hpp"
 
 /*

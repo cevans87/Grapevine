@@ -29,6 +29,7 @@ set(c-sources-test
         gv_test.cpp
         test_gv_zeroconf.cpp
         test_gv_util.cpp
+        test_gv_channel.cpp
         test_gv_type.cpp)
 
 foreach(source ${c-sources})

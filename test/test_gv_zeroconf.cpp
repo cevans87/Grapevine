@@ -47,9 +47,9 @@ TEST(MyTest, FirstTest) {
     fprintf(stderr, "done sleeping\n");
     EXPECT_EQ(1, 1);
 }
-
-int
-whatever() {
-    printf("icky\n");
-    return 0;
-}
+//
+//int
+//whatever() {
+//    printf("icky\n");
+//    return 0;
+//}

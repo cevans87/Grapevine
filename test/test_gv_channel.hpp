@@ -1,0 +1,8 @@
+#ifndef GRAPEVINE_TEST_TEST_GV_CHANNEL_HPP_
+#define GRAPEVINE_TEST_TEST_GV_CHANNEL_HPP_
+
+
+#include "gv_channel.hpp"
+
+#endif // GRAPEVINE_TEST_TEST_GV_CHANNEL_HPP_
+
