@@ -32,7 +32,8 @@ class GV_Channel
 
     private:
         std::mutex _mtx;
-        std::condition_variable _cv;
+        std::condition_variable _getter_cv;
+        std::condition_variable _putter_cv;
         std::vector<std::unique_ptr<T>> _mItems;
         int _mCapacity;
         int _mItemsBegin;
@@ -63,22 +64,22 @@ GV_Channel<T>::get(
     GV_ERROR error = GV_ERROR_SUCCESS;
     std::unique_lock<std::mutex> lk(_mtx);
 
-    if (_bClosed) {
-        error = GV_ERROR_ALREADY_DISABLED;
-        BAIL_ON_GV_ERROR(error);
-    }
-
     while (0 >= _mItemsCount) {
-        _cv.wait(lk);
+        if (_bClosed) {
+            error = GV_ERROR_ALREADY_DISABLED;
+            BAIL_ON_GV_ERROR(error);
+        }
+        _getter_cv.wait(lk);
     }
 
     *itemOut = move(_mItems.at(_mItemsBegin));
     _mItemsBegin = (_mItemsBegin + 1) % (_mCapacity + 1);
     --_mItemsCount;
-    _cv.notify_one();
+
+    _putter_cv.notify_one();
 
 out:
-    return GV_ERROR_SUCCESS;
+    return error;
 
 error:
     goto out;
@@ -94,25 +95,27 @@ GV_Channel<T>::put(
     int idxPut;
     std::unique_lock<std::mutex> lk(_mtx);
 
+    while (_mItemsCount > _mCapacity && !_bClosed) {
+        _putter_cv.wait(lk);
+    }
+
     if (_bClosed) {
         error = GV_ERROR_ALREADY_DISABLED;
         BAIL_ON_GV_ERROR(error);
     }
 
-    while (_mItemsCount > _mCapacity) {
-        _cv.wait(lk);
-    }
-
     idxPut = (_mItemsBegin + _mItemsCount) % (_mCapacity + 1);
     _mItems.at(idxPut) = move(*itemIn);
     ++_mItemsCount;
-    _cv.notify_one();
+
+    _getter_cv.notify_one();
+
     while (_mItemsCount > _mCapacity) {
-        _cv.wait(lk);
+        _putter_cv.wait(lk);
     }
 
 out:
-    return GV_ERROR_SUCCESS;
+    return error;
 
 error:
     goto out;
@@ -168,6 +171,12 @@ template <class T>
 GV_ERROR
 GV_Channel<T>::close()
 {
+    std::unique_lock<std::mutex> lk(_mtx);
+
+    _bClosed = true;
+    _getter_cv.notify_all();
+    _putter_cv.notify_all();
+
     return GV_ERROR_SUCCESS;
 }
 
