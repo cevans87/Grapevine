@@ -63,6 +63,7 @@ if (GV_COMPILER STREQUAL "clang++")
     set(GV_FLAGS "${GV_FLAGS} -Wno-gnu-zero-variadic-macro-arguments")
     set(GV_FLAGS "${GV_FLAGS} -Wno-c++98-compat-pedantic")
     set(GV_FLAGS "${GV_FLAGS} -Wno-zero-length-array")
+    set(GV_FLAGS "${GV_FLAGS} -Wno-padded")
 
     # gtest annoyances
     set(GV_FLAGS "${GV_FLAGS} -Wno-global-constructors")

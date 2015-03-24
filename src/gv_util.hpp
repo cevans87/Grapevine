@@ -28,8 +28,11 @@
         }                                                                   \
     } while (0)
 
-int gv_safe_free(void **mem);
-int gv_safe_delete(void **mem);
+template <typename T>
+int gv_safe_free(T **mem);
+
+template <typename T>
+int gv_safe_delete(T **mem);
 
 #endif // GRAPEVINE_SRC_GV_UTIL_HPP_
 

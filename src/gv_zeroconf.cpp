@@ -8,8 +8,12 @@
 #include "gv_zeroconf.hpp"
 #include "gv_util.hpp"
 
+namespace grapevine {
+
 void
-GV_MDNSHandler::browseCallback(
+MDNSHandler::browseCallback(
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
     IN DNSServiceRef service,
     IN DNSServiceFlags flags,
     IN uint32_t interfaceIndex,
@@ -18,9 +22,10 @@ GV_MDNSHandler::browseCallback(
     IN const char *type,
     IN const char *domain,
     IN void *context
+#pragma clang diagnostic pop
     )
 {
-    GV_MDNSHandler *self = reinterpret_cast<GV_MDNSHandler *>(context);
+    MDNSHandler *self = reinterpret_cast<MDNSHandler *>(context);
     GV_DEBUG_PRINT("Browse callback initiated");
     if (nullptr == self)
     {
@@ -35,7 +40,7 @@ GV_MDNSHandler::browseCallback(
 }
 
 GV_ERROR
-GV_MDNSHandler::setBrowseCallback(
+MDNSHandler::setBrowseCallback(
     IN gv_browse_callback callback
     )
 {
@@ -44,7 +49,7 @@ GV_MDNSHandler::setBrowseCallback(
 }
 
 GV_ERROR
-GV_MDNSHandler::enableBrowse()
+MDNSHandler::enableBrowse()
 {
     DNSServiceErrorType error;
     GV_DEBUG_PRINT("About to call zeroconf browse");
@@ -72,7 +77,7 @@ GV_MDNSHandler::enableBrowse()
 }
 
 void
-GV_MDNSHandler::handleEvents(
+MDNSHandler::handleEvents(
     IN DNSServiceRef serviceRef
     )
 {
@@ -100,3 +105,5 @@ GV_MDNSHandler::handleEvents(
         }
     }
 }
+
+} // namespace grapevine

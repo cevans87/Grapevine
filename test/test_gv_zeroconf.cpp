@@ -8,14 +8,20 @@
 
 #include "test_gv_zeroconf.hpp"
 
-std::mutex mtx;
-std::condition_variable cv;
+static std::mutex *p_mtx;
+static std::condition_variable *p_cv;
+
+namespace gv = grapevine;
 
 TEST(MyTest, FirstTest) {
+    p_mtx = new std::mutex();
+    p_cv = new std::condition_variable();
     //mtx.lock();
-    std::unique_lock<std::mutex> lk(mtx);
+    std::unique_lock<std::mutex> lk(*p_mtx);
 
     DNSServiceBrowseReply cb = [](
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
             IN DNSServiceRef service,
             IN DNSServiceFlags flags,
             IN uint32_t interfaceIndex,
@@ -24,22 +30,23 @@ TEST(MyTest, FirstTest) {
             IN const char *type,
             IN const char *domain,
             IN void *context) -> void
+#pragma clang diagnostic pop
     {
         //std::lock_guard<std::mutex> lk(mtx);
         printf("Callback worked!\n");
         //mtx.unlock();
-        cv.notify_all();
+        p_cv->notify_all();
         printf("Unlock worked!\n");
     };
     fprintf(stderr, "about to create GV_Browser\n");
-    UP_GV_MDNSHandler upMDNSHandler = UP_GV_MDNSHandler(new GV_MDNSHandler());
+    gv::UP_MDNSHandler upMDNSHandler = gv::UP_MDNSHandler(new gv::MDNSHandler());
     upMDNSHandler->setBrowseCallback(cb);
     fprintf(stderr, "about to browse\n");
     upMDNSHandler->enableBrowse();
     fprintf(stderr, "browsing\n");
     using std::chrono::high_resolution_clock;
     using std::chrono::seconds;
-    cv.wait(lk);
+    p_cv->wait(lk);
     //mtx.lock();
     //mtx.unlock();
     fprintf(stderr, "test passes\n");

@@ -8,13 +8,15 @@
 #include "gv_type.hpp"
 #include "gv_channel.hpp"
 
+namespace grapevine {
+
 using gv_browse_callback = DNSServiceBrowseReply;
 using gv_resolve_callback = DNSServiceResolveReply;
 using gv_register_callback = DNSServiceRegisterReply;
 
 using gv_browse_context = void *;
 
-class GV_MDNSHandler
+class MDNSHandler
 {
     public:
         GV_ERROR setBrowseCallback(
@@ -91,7 +93,9 @@ class GV_MDNSHandler
 //        gv_browse_context _mContext;
 //};
 
-using UP_GV_MDNSHandler = std::unique_ptr<GV_MDNSHandler>;
+using UP_MDNSHandler = std::unique_ptr<MDNSHandler>;
+
+} // namespace grapevine
 
 #endif // GRAPEVINE_SRC_GV_ZEROCONF_HPP_
 
