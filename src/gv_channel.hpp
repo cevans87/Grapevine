@@ -188,7 +188,8 @@ Channel<T>::put(
     // are supposed to return.
     uTransferredBegin = _uItemsTransferred;
     while ((_uItemsCount > _uCapacity) &&
-            (uTransferredBegin == _uItemsTransferred)) {
+            (uTransferredBegin == _uItemsTransferred) &&
+            (0 == _uWaitingGetters)) {
         if (_bClosed) {
             *itemIn = move(_items.at(uxPut));
             error = GV_ERROR_CHANNEL_CLOSED;
@@ -249,15 +250,13 @@ Channel<T>::put_nowait(
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
     unsigned int uxPut;
-    unsigned int uTransferredBegin;
     std::unique_lock<std::mutex> lk(_mtx);
 
     // Make sure we can do a non-blocking 'put'.
     if (_bClosed) {
         error = GV_ERROR_CHANNEL_CLOSED;
-    } else if (_uItemsCount == _uCapacity && 0 == _uWaitingGetters) {
-        error = GV_ERROR_CHANNEL_FULL;
-    } else if (_uItemsCount > _uCapacity) {
+    } else if ((_uItemsCount == _uCapacity && 0 == _uWaitingGetters) ||
+            (_uItemsCount > _uCapacity)) {
         error = GV_ERROR_CHANNEL_FULL;
     }
     BAIL_ON_GV_ERROR(error);
@@ -269,24 +268,6 @@ Channel<T>::put_nowait(
 
     // Let getters know we made an item availalble.
     _getter_cv.notify_one();
-
-    // If we sleep because we're an "overputter", another "overputter" might
-    // sneak in and make it look like we are still over capacity just before we
-    // wake up again. If _ItemsTransferred changes, we can still tell that we
-    // are supposed to return.
-    uTransferredBegin = _uItemsTransferred;
-    while ((_uItemsCount > _uCapacity) &&
-            (uTransferredBegin == _uItemsTransferred)) {
-        if (_bClosed) {
-            *itemIn = move(_items.at(uxPut));
-            error = GV_ERROR_CHANNEL_CLOSED;
-            BAIL_ON_GV_ERROR(error);
-        }
-        // We just did an "overput" but this won't block for long. We know a
-        // getter is waiting to take an item. We just need the getter to return
-        // before we do.
-        _overputter_cv.wait(lk);
-    }
 
 out:
     return error;

@@ -240,24 +240,24 @@ TEST(channel, many_getters) {
 
 // Tests that get_nowait works on capacity 0 channel. Probably slow.
 TEST(channel, nowait_getters_capacity_0_one_tenth_items) {
-    nowait_getter_capacity_test(0, 1, g_nItems / 10);
+    nowait_getter_capacity_test(0, g_nThreadsMed, (g_nItems / 10) / g_nThreadsMed);
 }
 
 // Tests get_nowait on higher capacity channel, probably much faster than 0
 // capacity channel.
 TEST(channel, nowait_getters_capacity_100) {
-    nowait_getter_capacity_test(100, 1, g_nItems);
+    nowait_getter_capacity_test(100, g_nThreadsMed, g_nItems / g_nThreadsMed);
 }
 
 // Tests that put_nowait works on capacity 0 channel. Probably slow.
 TEST(channel, nowait_putters_capacity_0_one_tenth_items) {
-    nowait_putter_capacity_test(0, 1, g_nItems / 10);
+    nowait_putter_capacity_test(0, g_nThreadsMed, (g_nItems / 10) / g_nThreadsMed);
 }
 
 // Tests put_nowait on higher capacity channel, probably much faster than 0
 // capacity channel.
 TEST(channel, nowait_putters_capacity_100) {
-    nowait_putter_capacity_test(100, 1, g_nItems);
+    nowait_putter_capacity_test(100, g_nThreadsMed, g_nItems / g_nThreadsMed);
 }
 
 // Tests channel with high 'put' contention.
