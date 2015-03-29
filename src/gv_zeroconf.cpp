@@ -11,7 +11,7 @@
 namespace grapevine {
 
 void
-MDNSHandler::browseCallback(
+ZeroconfClient::browseCallback(
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
     IN DNSServiceRef service,
@@ -25,14 +25,14 @@ MDNSHandler::browseCallback(
 #pragma clang diagnostic pop
     )
 {
-    MDNSHandler *self = reinterpret_cast<MDNSHandler *>(context);
+    ZeroconfClient *self = reinterpret_cast<ZeroconfClient *>(context);
     GV_DEBUG_PRINT("Browse callback initiated");
     if (nullptr == self)
     {
         GV_DEBUG_PRINT("No context given.");
         return;
     }
-    //else if (nullptr == self->_mCallback)
+    //else if (nullptr == self->_callback)
     //{
     //    GV_DEBUG_PRINT("No callback set.");
     //    return;
@@ -40,44 +40,43 @@ MDNSHandler::browseCallback(
 }
 
 GV_ERROR
-MDNSHandler::setBrowseCallback(
+ZeroconfClient::setBrowseCallback(
     IN gv_browse_callback callback
     )
 {
-    _mBrowseCallback = callback;
+    _browseCallback = callback;
     return GV_ERROR_SUCCESS;
 }
 
 GV_ERROR
-MDNSHandler::enableBrowse()
+ZeroconfClient::enableBrowse()
 {
     DNSServiceErrorType error;
     GV_DEBUG_PRINT("About to call zeroconf browse");
     error = DNSServiceBrowse(
-            &_mServiceRef,   // sdRef,
+            &_serviceRef,   // sdRef,
             0,              // flags,
             0,              // interfaceIndex,
             "_grapevine._tcp", // regtype,
             // FIXME cevans87: Implement more than link-local
             "local",       // domain,
-            _mBrowseCallback,
+            _browseCallback,
             reinterpret_cast<void *>(this)            // context
             );
     GV_DEBUG_PRINT("DNSServiceBrowse returned with error: %d", error);
     if (!error)
     {
         printf("about to call async\n");
-        _mFutureHandleEvents =
-                std::async(std::launch::async, handleEvents, _mServiceRef);
+        _futureHandleEvents =
+                std::async(std::launch::async, handleEvents, _serviceRef);
         printf("Called async\n");
-        DNSServiceRefDeallocate(_mServiceRef);
-        _mServiceRef = reinterpret_cast<DNSServiceRef>(NULL);
+        // FIXME _serviceRef isn't deallocated anywere.
     }
     return GV_ERROR_SUCCESS;
 }
 
 void
-MDNSHandler::handleEvents(
+ZeroconfClient::handleEvents(
     IN DNSServiceRef serviceRef
     )
 {
@@ -92,16 +91,22 @@ MDNSHandler::handleEvents(
         FD_SET(dns_sd_fd, &readfds);
         tv.tv_sec = 20;
         tv.tv_usec = 0;
-        GV_DEBUG_PRINT("handleEvents loop");
-        int result = select(nfds, &readfds, reinterpret_cast<fd_set *>(NULL),
-                reinterpret_cast<fd_set *>(NULL), &tv);
+        // FIXME add a kill FD to signal that owner object is dying?
+        int result = select(
+                nfds, // TODO mark these
+                &readfds,
+                nullptr,
+                nullptr,
+                &tv
+                );
         if (result > 0 && FD_ISSET(dns_sd_fd, &readfds))
         {
             // FIXME future destructor at end of loop is blocking. Create
             // thread without blocking.
+            printf("found something interesting\n");
             std::future<int> handle = std::async(std::launch::async,
                     DNSServiceProcessResult, serviceRef);
-            err = DNSServiceProcessResult(serviceRef);
+            //err = DNSServiceProcessResult(serviceRef);
         }
     }
 }

@@ -16,7 +16,7 @@ using gv_register_callback = DNSServiceRegisterReply;
 
 using gv_browse_context = void *;
 
-class MDNSHandler
+class ZeroconfClient
 {
     public:
         GV_ERROR setBrowseCallback(
@@ -41,9 +41,9 @@ class MDNSHandler
             IN char *pszServiceName);
 
     private:
-        gv_browse_callback _mBrowseCallback;
-        std::future<void> _mFutureHandleEvents; // handleEvents
-        DNSServiceRef _mServiceRef; // FIXME get rid of this. We need more than one.
+        gv_browse_callback _browseCallback;
+        std::future<void> _futureHandleEvents; // handleEvents
+        DNSServiceRef _serviceRef; // FIXME get rid of this. We need more than one.
 
         static void handleEvents(
             IN DNSServiceRef serviceRef);
@@ -93,7 +93,7 @@ class MDNSHandler
 //        gv_browse_context _mContext;
 //};
 
-using UP_MDNSHandler = std::unique_ptr<MDNSHandler>;
+using UP_ZeroconfClient = std::unique_ptr<ZeroconfClient>;
 
 } // namespace grapevine
 

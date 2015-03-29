@@ -9,6 +9,8 @@
 #ifndef GV_DEBUG
 #define GV_DEBUG_PRINT(fmt, ...)
 #else
+// FIXME add debug levels. BAIL_ON_ERROR debug prints get really spammy in
+// tests.
 #define GV_DEBUG_PRINT(fmt, ...)                                            \
     do                                                                      \
     {                                                                       \

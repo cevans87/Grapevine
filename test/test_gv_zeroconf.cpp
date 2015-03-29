@@ -8,14 +8,19 @@
 
 #include "test_gv_zeroconf.hpp"
 
-static std::mutex *p_mtx;
-static std::condition_variable *p_cv;
+static std::mutex *p_mtx = nullptr;
+static std::condition_variable *p_cv = nullptr;
 
 namespace gv = grapevine;
 
-TEST(MyTest, FirstTest) {
-    p_mtx = new std::mutex();
-    p_cv = new std::condition_variable();
+TEST(zeroconf, browser) {
+    if (nullptr == p_mtx) {
+        p_mtx = new std::mutex();
+    }
+
+    if (nullptr == p_cv) {
+        p_cv = new std::condition_variable();
+    }
     //mtx.lock();
     std::unique_lock<std::mutex> lk(*p_mtx);
 
@@ -32,17 +37,18 @@ TEST(MyTest, FirstTest) {
             IN void *context) -> void
 #pragma clang diagnostic pop
     {
-        //std::lock_guard<std::mutex> lk(mtx);
         printf("Callback worked!\n");
+        std::lock_guard<std::mutex> cb_lk(*p_mtx);
+        printf("Callback got lock\n");
         //mtx.unlock();
         p_cv->notify_all();
         printf("Unlock worked!\n");
     };
     fprintf(stderr, "about to create GV_Browser\n");
-    gv::UP_MDNSHandler upMDNSHandler = gv::UP_MDNSHandler(new gv::MDNSHandler());
-    upMDNSHandler->setBrowseCallback(cb);
+    gv::UP_ZeroconfClient upZeroconfClient = gv::UP_ZeroconfClient(new gv::ZeroconfClient());
+    upZeroconfClient->setBrowseCallback(cb);
     fprintf(stderr, "about to browse\n");
-    upMDNSHandler->enableBrowse();
+    upZeroconfClient->enableBrowse();
     fprintf(stderr, "browsing\n");
     using std::chrono::high_resolution_clock;
     using std::chrono::seconds;
@@ -54,9 +60,4 @@ TEST(MyTest, FirstTest) {
     fprintf(stderr, "done sleeping\n");
     EXPECT_EQ(1, 1);
 }
-//
-//int
-//whatever() {
-//    printf("icky\n");
-//    return 0;
-//}
+
