@@ -1,6 +1,7 @@
 #include <future>
 #include <functional>
 #include <chrono>
+#include <memory>
 
 #include "test_gv_channel.hpp"
 #include "gtest/gtest.h"

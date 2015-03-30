@@ -292,6 +292,10 @@ Channel<T>::close()
     return GV_ERROR_SUCCESS;
 }
 
+template <typename T>
+using UP_Channel = std::unique_ptr<Channel<T>>;
+
 } // namespace grapevine
+
 #endif // GRAPEVINE_SRC_GV_CHANNEL_HPP_
 

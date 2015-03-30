@@ -19,6 +19,8 @@ using gv_browse_context = void *;
 class ZeroconfClient
 {
     public:
+        ZeroconfClient();
+        ~ZeroconfClient();
         GV_ERROR setBrowseCallback(
             IN DNSServiceBrowseReply callback);
         GV_ERROR enableBrowse();
@@ -41,12 +43,15 @@ class ZeroconfClient
             IN char *pszServiceName);
 
     private:
+        std::mutex _handlerMtx;
+        UP_Channel<int> _upchHandlerFd;
         gv_browse_callback _browseCallback;
-        std::future<void> _futureHandleEvents; // handleEvents
+        std::future<GV_ERROR> _futureHandleEvents; // handleEvents
         DNSServiceRef _serviceRef; // FIXME get rid of this. We need more than one.
 
-        static void handleEvents(
-            IN DNSServiceRef serviceRef);
+        static GV_ERROR eventHandlerThread(
+            IN int iHandlerFd,
+            IN UP_Channel<int> const *pupchHandlerFd);
         static void browseCallback(
             IN DNSServiceRef service,
             IN DNSServiceFlags flags,
