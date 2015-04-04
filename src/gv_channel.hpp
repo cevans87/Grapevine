@@ -76,6 +76,7 @@ class Channel {
         std::condition_variable _overputter_cv;
 
         // Storage and required information for a circular fifo for items.
+        // FIXME just use a std queue...
         std::vector<std::unique_ptr<T>> _items;
         unsigned int _uCapacity;
         unsigned int _uItemsBegin;

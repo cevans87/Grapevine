@@ -43,15 +43,21 @@ class ZeroconfClient
             IN char *pszServiceName);
 
     private:
-        std::mutex _handlerMtx;
-        UP_Channel<int> _upchHandlerFd;
+        // Mutex needed to keep mul
+
+        // FIXME I think I put this mutex here to do the same thing that
+        // getting the handler signal fd from the channel would achieve.
+        // Probably delete this.
+        //std::mutex _handlerSignalMtx;
+        UP_Channel<int> _upchHandlerSignalFd;
+        UP_Channel<DNSServiceRef> _upchAddServiceRef;
         gv_browse_callback _browseCallback;
         std::future<GV_ERROR> _futEventHandler;
-        DNSServiceRef _serviceRef; // FIXME get rid of this. We need more than one.
+        //DNSServiceRef _serviceRef; // FIXME get rid of this. We need more than one.
 
         static GV_ERROR eventHandlerThread(
             IN int iHandlerFd,
-            IN UP_Channel<int> const *pupchHandlerFd);
+            IN UP_Channel<DNSServiceRef> const *pupchAddServiceRef);
         static void browseCallback(
             IN DNSServiceRef service,
             IN DNSServiceFlags flags,

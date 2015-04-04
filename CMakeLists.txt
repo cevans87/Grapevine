@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 project (grapevine)
 
+# FIXME cevans87: Detect and build gtest locally as well using same compiler as
+# this project. For clang++, ./configure CC=clang CXX=clang++ CFLAGS="-02 -g"
+# CXXFLAGS="-02 -g -stdlib=libc++"
+
 # FIXME cevans87: stop forcing clang++, just prefer it.
 if (NOT GV_COMPILER)
     set(GV_COMPILER "clang++")
