@@ -8,6 +8,7 @@
 #include "gv_type.hpp"
 
 // TODO implement "select" for channels?
+// TODO implement RAII class for checkout/return of what's in channel?
 
 namespace grapevine {
 

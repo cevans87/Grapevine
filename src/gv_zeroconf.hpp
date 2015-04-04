@@ -46,7 +46,7 @@ class ZeroconfClient
         std::mutex _handlerMtx;
         UP_Channel<int> _upchHandlerFd;
         gv_browse_callback _browseCallback;
-        std::future<GV_ERROR> _futureHandleEvents; // handleEvents
+        std::future<GV_ERROR> _futEventHandler;
         DNSServiceRef _serviceRef; // FIXME get rid of this. We need more than one.
 
         static GV_ERROR eventHandlerThread(
@@ -62,41 +62,6 @@ class ZeroconfClient
             IN const char *domain,
             IN void *context);
 };
-
-//class GV_Browser
-//{
-//    public:
-//        GV_Browser();
-//        GV_Browser(gv_browse_callback, gv_browse_context);
-//        GV_ERROR enable();
-//        int disable();
-//        int register_callback(gv_browse_callback);
-//    private:
-//        void handleEvents(DNSServiceRef serviceRef);
-//        static void DNSServiceBrowseCallback(
-//                IN DNSServiceRef service,
-//                IN DNSServiceFlags flags,
-//                IN uint32_t interfaceIndex,
-//                IN DNSServiceErrorType errorCode,
-//                IN const char *name,
-//                IN const char *type,
-//                IN const char *domain,
-//                IN void *context
-//                );
-//        void DNSServiceBrowseCallback(
-//                IN DNSServiceRef service,
-//                IN DNSServiceFlags flags,
-//                IN uint32_t interfaceIndex,
-//                IN DNSServiceErrorType errorCode,
-//                IN const char *name,
-//                IN const char *type,
-//                IN const char *domain
-//                );
-//        DNSServiceErrorType browse();
-//        DNSServiceRef _serviceRef;
-//        gv_browse_callback _mCallback;
-//        gv_browse_context _mContext;
-//};
 
 using UP_ZeroconfClient = std::unique_ptr<ZeroconfClient>;
 

@@ -24,7 +24,7 @@ ZeroconfClient::ZeroconfClient(
 
     _upchHandlerFd->put_nowait(&upHandlerFd);
 
-    _futureHandleEvents = std::async(
+    _futEventHandler = std::async(
             std::launch::async,
             eventHandlerThread,
             eventHandlerPipeFd[0],
@@ -89,18 +89,19 @@ ZeroconfClient::enableBrowse()
     DNSServiceErrorType serviceError;
     GV_DEBUG_PRINT("About to call zeroconf browse");
     serviceError = DNSServiceBrowse(
-            &_serviceRef,   // sdRef,
-            0,              // flags,
-            0,              // interfaceIndex,
-            "_grapevine._tcp", // regtype,
-            // FIXME cevans87: Implement more than link-local
-            "local",       // domain,
-            _browseCallback,
-            reinterpret_cast<void *>(this)            // context
+            &_serviceRef,                   // sdRef,
+            0,                              // flags,
+            0,                              // interfaceIndex,
+            "_grapevine._tcp",              // regtype,
+            // TODO cevans87: Implement more than link-local
+            "local",                        // domain,
+            _browseCallback,                // callback,
+            reinterpret_cast<void *>(this)  // context
             );
     GV_DEBUG_PRINT("DNSServiceBrowse returned with error: %d", serviceError);
 
     std::lock_guard<std::mutex> lg(_handlerMtx);
+    return error;
 
     // TODO send _serviceRef to handler thread.
     
@@ -179,6 +180,7 @@ ZeroconfClient::eventHandlerThread(
     }
 
 out:
+    close(iChanFd);
     return error;
 
 error:
