@@ -172,25 +172,31 @@ ZeroconfClient::eventHandlerThread(
     int selectError = 0;
     int buf;
     //bool browseEnabled = false;
-    int maxFd = iChanFd;
+    int maxFd;
     struct timeval tv;
     fd_set readFds;
     std::vector<std::unique_ptr<DNSServiceRef>> vecServiceRefs;
     std::vector<int> vecDnssdFds;
     //int dnssdFd = DNSServiceRefSockFD(serviceRef);
 
-    FD_ZERO(&readFds);
-    FD_SET(iChanFd, &readFds);
     tv.tv_sec = 20;
     tv.tv_usec = 0;
 
     while (!selectError) {
+        FD_ZERO(&readFds);
+        FD_SET(iChanFd, &readFds);
+        maxFd = iChanFd;
+        for (int dnssdFd: vecDnssdFds) {
+            FD_SET(dnssdFd, &readFds);
+            maxFd = (maxFd >= dnssdFd) ? maxFd : dnssdFd;
+        }
         int result = select(
                 maxFd + 1, // TODO mark these
                 &readFds,
                 nullptr,
                 nullptr,
-                &tv
+                nullptr
+                //&tv
                 );
         if (result > 0) {
             if (FD_ISSET(iChanFd, &readFds)) {
@@ -216,18 +222,12 @@ ZeroconfClient::eventHandlerThread(
             unsigned long ixFd = 0;
             for (int dnssdFd: vecDnssdFds) {
                 if (FD_ISSET(dnssdFd, &readFds)) {
+                    // FIXME this is the wrong way to store this handle. If
+                    // this async doesn't return, we're screwed next loop.
                     std::future<int> handle = std::async(std::launch::async,
                             DNSServiceProcessResult, *vecServiceRefs.at(ixFd));
                 }
                 ++ixFd;
-            }
-            maxFd = iChanFd;
-            FD_ZERO(&readFds);
-            FD_SET(iChanFd, &readFds);
-
-            for (int dnssdFd: vecDnssdFds) {
-                FD_SET(dnssdFd, &readFds);
-                maxFd = (maxFd >= dnssdFd) ? maxFd : dnssdFd;
             }
             //else if (FD_ISSET(dnssdFd, &readFds)) {
             //    // FIXME how should we store all the futures? Should we really
