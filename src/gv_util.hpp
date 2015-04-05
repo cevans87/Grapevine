@@ -5,6 +5,7 @@
 // Parameter input/output hints for function prototypes and definitions.
 #define IN
 #define OUT
+#define INOUT
 
 #ifndef GV_DEBUG
 #define GV_DEBUG_PRINT(fmt, ...)

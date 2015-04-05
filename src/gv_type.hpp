@@ -10,6 +10,7 @@
 // All error symbols defined here and only here.
 #define GV_ERROR_SYMBOLS                                    \
     GV_ERROR_SYMBOL(GV_ERROR_SUCCESS),                      \
+    GV_ERROR_SYMBOL(GV_ERROR_INVALID_ARG),                  \
     GV_ERROR_SYMBOL(GV_ERROR_NOOP),                         \
     GV_ERROR_SYMBOL(GV_ERROR_LOCK_UNAVAILABLE),             \
     GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_FULL),                 \

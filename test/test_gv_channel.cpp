@@ -6,6 +6,8 @@
 #include "test_gv_channel.hpp"
 #include "gtest/gtest.h"
 
+// TODO test select for channels.
+
 int const g_nItems = 100000;
 //int const g_nThreadsLo = 2;
 int const g_nThreadsMed = 10;
