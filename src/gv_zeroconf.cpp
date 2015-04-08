@@ -5,6 +5,7 @@
 
 #include <future>
 #include <functional>
+#include <map>
 
 #include "gv_zeroconf.hpp"
 #include "gv_util.hpp"
@@ -24,9 +25,9 @@ ZeroconfClient::ZeroconfClient(
     std::unique_ptr<int> upHandlerFd =
             std::unique_ptr<int>(new int(eventHandlerPipeFd[1]));
 
-    _futEventHandler = std::async(
+    _futHandleEvents = std::async(
             std::launch::async,
-            eventHandlerThread,
+            handleEvents,
             //eventHandlerPipeFd[0], TODO delete
             // FIXME I'd rather use a const rvalue here, but can't use that in
             // an async call. What's the right way to do this?
@@ -117,76 +118,77 @@ error:
 }
 
 GV_ERROR
-ZeroconfClient::eventHandlerThread(
+ZeroconfClient::handleEvents(
     IN UP_Channel<DNSServiceRef> const *pupchAddServiceRef
     )
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
     int iChanFd = -1;
-    int selectError = 0;
-    int buf;
-    //bool browseEnabled = false;
     int maxFd;
     fd_set readFds;
-    std::vector<std::unique_ptr<DNSServiceRef>> vecServiceRefs;
-    std::vector<int> vecDnssdFds;
-    //int dnssdFd = DNSServiceRefSockFD(serviceRef);
+    std::map<int, std::unique_ptr<DNSServiceRef>> mapFdToServiceRef;
 
-    while (!selectError) {
+    // Select on readFds until pupchAddServiceRef closes
+    while (true) {
         error = (*pupchAddServiceRef)->get_notify_data_available_fd(&iChanFd);
         BAIL_ON_GV_ERROR(error);
 
         FD_ZERO(&readFds);
         FD_SET(iChanFd, &readFds);
         maxFd = iChanFd;
-        for (int dnssdFd: vecDnssdFds) {
-            FD_SET(dnssdFd, &readFds);
-            maxFd = (maxFd >= dnssdFd) ? maxFd : dnssdFd;
+        for (std::pair<int const, std::unique_ptr<DNSServiceRef>> const &fdToRef :
+                mapFdToServiceRef) {
+
+            FD_SET(fdToRef.first, &readFds);
+            maxFd = (maxFd >= fdToRef.first) ? maxFd : fdToRef.first;
         }
         int result = select(
                 maxFd + 1,
                 &readFds, // All we wanna do is read
                 nullptr,  // Don't care about writes
                 nullptr,  // Don't care about exceptions
-                nullptr   // Block forever
+                nullptr   // Don't time out
                 );
         if (result > 0) {
             if (FD_ISSET(iChanFd, &readFds)) {
                 // Something waiting on the channel.
-                printf("data waiting on handler fd\n");
-                ssize_t numBytes;
-                numBytes = read(iChanFd, &buf, sizeof(buf));
-                printf("Read %zi bytes, buf is %i\n", numBytes, buf);
-                if (-1 == buf) {
-                    GV_DEBUG_PRINT("We should die now\n");
-                    goto out;
-                }
                 std::unique_ptr<DNSServiceRef> upServiceRef;
                 error = (*pupchAddServiceRef)->get(&upServiceRef);
                 BAIL_ON_GV_ERROR(error);
 
                 int dnssdFd = DNSServiceRefSockFD(*upServiceRef);
-                //printf("Got ref %lu\n", static_cast<long int>(*upServiceRef));
-                vecDnssdFds.emplace_back(dnssdFd);
-                printf("Got fd %i\n", vecDnssdFds.back());
-                vecServiceRefs.emplace_back(move(upServiceRef));
+                mapFdToServiceRef.insert(
+                        std::pair<int, std::unique_ptr<DNSServiceRef>>(
+                            dnssdFd,
+                            move(upServiceRef)));
             }
-            unsigned long udxFd = 0;
-            for (int dnssdFd: vecDnssdFds) {
-                if (FD_ISSET(dnssdFd, &readFds)) {
-                    // FIXME this is the wrong way to store this handle. If
+            for (std::pair<int const, std::unique_ptr<DNSServiceRef>> const &fdToRef :
+                    mapFdToServiceRef) {
+                if (FD_ISSET(fdToRef.first, &readFds)) {
                     // this async doesn't return, we're screwed next loop.
-                    std::future<int> handle = std::async(std::launch::async,
-                            DNSServiceProcessResult, *vecServiceRefs.at(udxFd));
+
+                    // Spawns thread to do the work.
+
+                    // FIXME this spawns a thread. if the thread doesn't read from the socket real
+                    std::future<DNSServiceErrorType> handle = std::async(
+                            std::launch::async,
+                            DNSServiceProcessResult,
+                            *fdToRef.second);
+                    //DNSServiceProcessResult(*fdToRef.second);
+
+                    // FIXME we block here on std::~future. Fix this.
                 }
-                ++udxFd;
             }
         }
     }
 
 out:
-    for (std::unique_ptr<DNSServiceRef> &upServiceRef: vecServiceRefs) {
-        DNSServiceRefDeallocate(*upServiceRef);
+    for (std::pair<int const, std::unique_ptr<DNSServiceRef>> const &fdToRef :
+            mapFdToServiceRef) {
+
+        // FIXME include the correct destructor in the unique pointer
+        // construction so we don't have to do this cleanup.
+        DNSServiceRefDeallocate(*fdToRef.second);
     }
     if (-1 != iChanFd) {
         (*pupchAddServiceRef)->close_notify_data_available_fd(&iChanFd);

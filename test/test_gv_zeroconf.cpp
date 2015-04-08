@@ -8,21 +8,21 @@
 
 #include "test_gv_zeroconf.hpp"
 
-static std::mutex *p_mtx = nullptr;
-static std::condition_variable *p_cv = nullptr;
+static std::mutex *g_pmtxTest = nullptr;
+static std::condition_variable *g_pcvTest = nullptr;
+static bool g_bOk = false;
 
 namespace gv = grapevine;
 
 TEST(zeroconf, browser) {
-    if (nullptr == p_mtx) {
-        p_mtx = new std::mutex();
+    if (nullptr == g_pmtxTest) {
+        g_pmtxTest = new std::mutex();
     }
 
-    if (nullptr == p_cv) {
-        p_cv = new std::condition_variable();
+    if (nullptr == g_pcvTest) {
+        g_pcvTest = new std::condition_variable();
     }
-    //mtx.lock();
-    std::unique_lock<std::mutex> lk(*p_mtx);
+    std::unique_lock<std::mutex> lk(*g_pmtxTest);
 
     DNSServiceBrowseReply cb = [](
 #pragma clang diagnostic push
@@ -37,11 +37,20 @@ TEST(zeroconf, browser) {
             IN void *context) -> void
 #pragma clang diagnostic pop
     {
-        printf("Callback worked!\n");
-        std::lock_guard<std::mutex> cb_lk(*p_mtx);
+        printf("Callback worked! Got iface idx %u, type %s\n", interfaceIndex, type);
+        //using std::chrono::high_resolution_clock;
+        //using std::chrono::seconds;
+        //std::this_thread::sleep_for(seconds(6));
+        printf("callback slept for 6 sec\n");
+        //if (false == g_pmtxTest->try_lock()) {
+        //    printf("Lock failed in callback\n");
+        //    return;
+        //}
+        g_bOk = true;
         printf("Callback got lock\n");
         //mtx.unlock();
-        p_cv->notify_all();
+        // FIXME this doesn't always trigger the main function to wake up. Big bug.
+        g_pcvTest->notify_all();
         printf("Unlock worked!\n");
     };
     fprintf(stderr, "about to create GV_Browser\n");
@@ -52,7 +61,11 @@ TEST(zeroconf, browser) {
     fprintf(stderr, "browsing\n");
     using std::chrono::high_resolution_clock;
     using std::chrono::seconds;
-    p_cv->wait(lk);
+    while (false == g_bOk) {
+        printf("waiting on ok\n");
+        g_pcvTest->wait(lk);
+    }
+    //lk.unlock();
     //mtx.lock();
     //mtx.unlock();
     fprintf(stderr, "test passes\n");

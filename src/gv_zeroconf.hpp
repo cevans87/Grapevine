@@ -21,6 +21,10 @@ class ZeroconfClient
     public:
         ZeroconfClient();
         ~ZeroconfClient();
+
+        // Be aware that the browse callback may be called again very quickly,
+        // possibly while the previous call is still running. The callback
+        // should be prepared for this.
         GV_ERROR setBrowseCallback(
             IN DNSServiceBrowseReply callback);
         GV_ERROR enableBrowse();
@@ -47,9 +51,9 @@ class ZeroconfClient
 
         UP_Channel<DNSServiceRef> _upchAddServiceRef;
         gv_browse_callback _browseCallback;
-        std::future<GV_ERROR> _futEventHandler;
+        std::future<GV_ERROR> _futHandleEvents;
 
-        static GV_ERROR eventHandlerThread(
+        static GV_ERROR handleEvents(
             IN UP_Channel<DNSServiceRef> const *pupchAddServiceRef);
         static void browseCallback(
             IN DNSServiceRef service,

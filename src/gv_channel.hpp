@@ -63,7 +63,7 @@ class Channel {
         GV_ERROR put_nowait(
             IN std::unique_ptr<T> *itemIn);
 
-        // Provide read end of a pipe that is written to when data becomes
+        // Provides read end of a pipe that is written to when data becomes
         // available in the channel. Pipe is automatically cleared of the
         // message once data is removed from channel.
         // INOUT *pfdNotify - If *pfdNotify is -1, sets *pfdNotify to read end
@@ -76,7 +76,7 @@ class Channel {
         GV_ERROR get_notify_data_available_fd(
             INOUT int *pfdNotify);
 
-        // Provide read end of a pipe that is written to when space becomes
+        // Provides read end of a pipe that is written to when space becomes
         // available in the channel. Pipe is automatically cleared of the
         // message once data is placed in channel.
         // INOUT *pfdNotify - If *pfdNotify is -1, sets *pfdNotify to read end
@@ -89,7 +89,8 @@ class Channel {
         GV_ERROR get_notify_space_available_fd(
             INOUT int *pfdNotify);
 
-        // Close pipe created by a previous call to get_notify_data_available_fd.
+        // Closes pipe created by a previous call to
+        // get_notify_data_available_fd.
         // INOUT *pfdNotify - Pointer to write end of pipe to be closed. Read
         //      end will also be located and closed by channel.
         // Returns SUCCESS, or INVALID_ARG if *pfdNotify isn't the write-end of
@@ -97,7 +98,8 @@ class Channel {
         GV_ERROR close_notify_data_available_fd(
             INOUT int *pfdNotify);
 
-        // Close pipe created by a previous call to get_notify_space_available_fd.
+        // Closes pipe created by a previous call to
+        // get_notify_space_available_fd.
         // INOUT *pfdNotify - Pointer to write end of pipe to be closed. Read
         //      end will also be located and closed by channel.
         // Returns SUCCESS, or INVALID_ARG if *pfdNotify isn't the write-end of
@@ -105,7 +107,7 @@ class Channel {
         GV_ERROR close_notify_space_available_fd(
             INOUT int *pfdNotify);
 
-        // Close the channel. No more items may be 'put', but any remaining
+        // Closes the channel. No more items may be 'put', but any remaining
         // items may still be retrieved via 'get'. Calls to 'put' on a closed
         // channel and calls to 'get' on an empty, closed channel return
         // CHANNEL_CLOSED.
@@ -115,11 +117,11 @@ class Channel {
     private:
         std::mutex _mtx;
         // For notifying getters that items are available.
-        std::condition_variable _getter_cv;
+        std::condition_variable _cvGetter;
         // For notifying putters that space is available.
-        std::condition_variable _putter_cv;
+        std::condition_variable _cvPutter;
         // For notifying highest priority putter that they may leave.
-        std::condition_variable _overputter_cv;
+        std::condition_variable _cvOverPutter;
 
         // map writeFd to readFd.
         std::map<int, int> _mapfdNotifyDataAvailable;
@@ -186,7 +188,7 @@ Channel<T>::get(
             error = GV_ERROR_CHANNEL_CLOSED;
             BAIL_ON_GV_ERROR(error);
         }
-        _getter_cv.wait(lk);
+        _cvGetter.wait(lk);
     }
 
     // Retrieve item.
@@ -196,10 +198,6 @@ Channel<T>::get(
 
     for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
         // Pull the msg out of the pipe.
-        // FIXME We provided the read end of the pipe to others so that they
-        // may select. If they also remove the msg from the pipe, we may
-        // accidentally remove too many items and completely empty the pipe
-        // prematurely. Also, they may trigger an unsafe multi-threaded read.
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
@@ -215,8 +213,8 @@ Channel<T>::get(
     }
 
     // Let putters know we made space.
-    _overputter_cv.notify_one();
-    _putter_cv.notify_one();
+    _cvOverPutter.notify_one();
+    _cvPutter.notify_one();
 
     ++_uItemsTransferred;
 out:
@@ -241,7 +239,7 @@ Channel<T>::put(
 
     // Block until there is space or channel closes.
     while (_uItemsCount > _uCapacity && !_bClosed) {
-        _putter_cv.wait(lk);
+        _cvPutter.wait(lk);
     }
 
     if (_bClosed) {
@@ -256,10 +254,6 @@ Channel<T>::put(
 
     for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
         // Pull the msg out of the pipe.
-        // FIXME We provided the read end of the pipe to others so that they
-        // may select. If they also remove the msg from the pipe, we may
-        // accidentally remove too many items and completely empty the pipe
-        // prematurely. Also, they may trigger an unsafe multi-threaded read.
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
@@ -275,7 +269,7 @@ Channel<T>::put(
     }
 
     // Let getters know we made an item availalble.
-    _getter_cv.notify_one();
+    _cvGetter.notify_one();
 
     // If we sleep because we're an "overputter", another "overputter" might
     // sneak in and make it look like we are still over capacity just before we
@@ -293,7 +287,7 @@ Channel<T>::put(
         // Even though we placed an item, channel would be over capacity if we
         // left now. We're not really down with item ownership. Wait until one
         // item is taken from channel.
-        _overputter_cv.wait(lk);
+        _cvOverPutter.wait(lk);
     }
 
 out:
@@ -328,10 +322,6 @@ Channel<T>::get_nowait(
 
     for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
         // Pull the msg out of the pipe.
-        // FIXME We provided the read end of the pipe to others so that they
-        // may select. If they also remove the msg from the pipe, we may
-        // accidentally remove too many items and completely empty the pipe
-        // prematurely. Also, they may trigger an unsafe multi-threaded read.
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
@@ -347,8 +337,8 @@ Channel<T>::get_nowait(
     }
 
     // Let putters know we made space.
-    _putter_cv.notify_one();
-    _overputter_cv.notify_one();
+    _cvPutter.notify_one();
+    _cvOverPutter.notify_one();
 
     ++_uItemsTransferred;
 out:
@@ -385,10 +375,6 @@ Channel<T>::put_nowait(
 
     for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
         // Pull the msg out of the pipe.
-        // FIXME We provided the read end of the pipe to others so that they
-        // may select. If they also remove the msg from the pipe, we may
-        // accidentally remove too many items and completely empty the pipe
-        // prematurely. Also, they may trigger an unsafe multi-threaded read.
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
@@ -404,7 +390,7 @@ Channel<T>::put_nowait(
     }
 
     // Let getters know we made an item availalble.
-    _getter_cv.notify_one();
+    _cvGetter.notify_one();
 
 out:
     return error;
@@ -462,8 +448,10 @@ Channel<T>::close_notify_data_available_fd(
     )
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    std::map<int, int>::iterator loc =
-        _mapfdNotifyDataAvailable.find(*pfdNotify);
+    std::map<int, int>::iterator loc;
+    std::lock_guard<std::mutex> lg(_mtx);
+
+    loc = _mapfdNotifyDataAvailable.find(*pfdNotify);
 
     if (_mapfdNotifyDataAvailable.end() == loc) {
         error = GV_ERROR_INVALID_ARG;
@@ -528,8 +516,10 @@ Channel<T>::close_notify_space_available_fd(
     )
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    std::map<int, int>::iterator loc =
-        _mapfdNotifySpaceAvailable.find(*pfdNotify);
+    std::map<int, int>::iterator loc;
+    std::lock_guard<std::mutex> lg(_mtx);
+
+    loc = _mapfdNotifySpaceAvailable.find(*pfdNotify);
 
     if (_mapfdNotifySpaceAvailable.end() == loc) {
         error = GV_ERROR_INVALID_ARG;
@@ -552,16 +542,19 @@ template <class T>
 GV_ERROR
 Channel<T>::close()
 {
+    GV_ERROR error = GV_ERROR_SUCCESS;
     char msg; // Don't care what's in here.
     std::unique_lock<std::mutex> lk(_mtx);
 
     if (_bClosed) {
         // Doing the work a second time would be bad.
-        return GV_ERROR_SUCCESS;
+        goto out;
     }
 
     _bClosed = true;
 
+    // Anyone selecting on this channel needs to wake up and find out it's
+    // closed.
     for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
         write(fds.second, &msg, sizeof(msg));
     }
@@ -570,11 +563,12 @@ Channel<T>::close()
     }
 
     // Wake all blocked threads up so they can bail. The channel is closed.
-    _getter_cv.notify_all();
-    _putter_cv.notify_all();
-    _overputter_cv.notify_all();
+    _cvGetter.notify_all();
+    _cvPutter.notify_all();
+    _cvOverPutter.notify_all();
 
-    return GV_ERROR_SUCCESS;
+out:
+    return error;
 }
 
 template <typename T>
