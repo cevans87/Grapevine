@@ -11,6 +11,12 @@
 #include "gv_zeroconf.hpp"
 #include "gv_util.hpp"
 
+using std::unique_ptr;
+using std::pair;
+using std::map;
+using std::future;
+using std::launch;
+
 namespace grapevine {
 
 ZeroconfClient::ZeroconfClient(
@@ -23,11 +29,10 @@ ZeroconfClient::ZeroconfClient(
 
     pipe(eventHandlerPipeFd);
 
-    std::unique_ptr<int> upHandlerFd =
-            std::unique_ptr<int>(new int(eventHandlerPipeFd[1]));
+    unique_ptr<int> upHandlerFd(new int(eventHandlerPipeFd[1]));
 
-    _futHandleEvents = std::async(
-            std::launch::async,
+    _futHandleEvents = async(
+            launch::async,
             handleEvents,
             //eventHandlerPipeFd[0], TODO delete
             // FIXME I'd rather use a const rvalue here, but can't use that in
@@ -85,11 +90,6 @@ ZeroconfClient::enableBrowse()
     GV_ERROR error = GV_ERROR_SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
-    std::unique_ptr<DNSServiceRef> upServiceRef = nullptr;
-    //std::unique_ptr<int> upDnssdFd;
-    //upDnssdFd =
-            //std::unique_ptr<int>(new int(DNSServiceRefSockFD(serviceRef)));
-
 
     GV_DEBUG_PRINT("About to call zeroconf browse");
     serviceError = DNSServiceBrowse(
@@ -102,11 +102,9 @@ ZeroconfClient::enableBrowse()
             _browseCallback,                // callback,
             reinterpret_cast<void *>(this)  // context
             );
-    GV_DEBUG_PRINT("DNSServiceBrowse returned with error: %d", serviceError);
-    upServiceRef =
-            std::unique_ptr<DNSServiceRef>(new DNSServiceRef(serviceRef));
+    //GV_DEBUG_PRINT("DNSServiceBrowse returned with error: %d", serviceError);
+    unique_ptr<DNSServiceRef> upServiceRef(new DNSServiceRef(serviceRef));
 
-    //printf("Putting dnssd fd, ref is %lu\n", static_cast<long int>(*upServiceRef));
     error = _upchAddServiceRef->put(&upServiceRef);
     printf("Finished putting fd\n");
     BAIL_ON_GV_ERROR(error);
@@ -127,7 +125,7 @@ ZeroconfClient::handleEvents(
     int iChanFd = -1;
     int maxFd;
     fd_set readFds;
-    std::map<int, std::unique_ptr<DNSServiceRef>> mapFdToServiceRef;
+    map<int, unique_ptr<DNSServiceRef>> mapFdToServiceRef;
 
     // Select on readFds until pupchAddServiceRef closes
     while (true) {
@@ -137,7 +135,7 @@ ZeroconfClient::handleEvents(
         FD_ZERO(&readFds);
         FD_SET(iChanFd, &readFds);
         maxFd = iChanFd;
-        for (std::pair<int const, std::unique_ptr<DNSServiceRef>> const &fdToRef :
+        for (pair<int const, unique_ptr<DNSServiceRef>> const &fdToRef :
                 mapFdToServiceRef) {
 
             FD_SET(fdToRef.first, &readFds);
@@ -153,17 +151,17 @@ ZeroconfClient::handleEvents(
         if (result > 0) {
             if (FD_ISSET(iChanFd, &readFds)) {
                 // Something waiting on the channel.
-                std::unique_ptr<DNSServiceRef> upServiceRef;
+                unique_ptr<DNSServiceRef> upServiceRef;
                 error = (*pupchAddServiceRef)->get(&upServiceRef);
                 BAIL_ON_GV_ERROR(error);
 
                 int dnssdFd = DNSServiceRefSockFD(*upServiceRef);
                 mapFdToServiceRef.insert(
-                        std::pair<int, std::unique_ptr<DNSServiceRef>>(
+                        pair<int, unique_ptr<DNSServiceRef>>(
                             dnssdFd,
                             move(upServiceRef)));
             }
-            for (std::pair<int const, std::unique_ptr<DNSServiceRef>> const &fdToRef :
+            for (pair<int const, unique_ptr<DNSServiceRef>> const &fdToRef :
                     mapFdToServiceRef) {
                 if (FD_ISSET(fdToRef.first, &readFds)) {
                     // this async doesn't return, we're screwed next loop.
@@ -171,8 +169,8 @@ ZeroconfClient::handleEvents(
                     // Spawns thread to do the work.
 
                     // FIXME this spawns a thread. if the thread doesn't read from the socket real
-                    std::future<DNSServiceErrorType> handle = std::async(
-                            std::launch::async,
+                    future<DNSServiceErrorType> handle = async(
+                            launch::async,
                             DNSServiceProcessResult,
                             *fdToRef.second);
                     //DNSServiceProcessResult(*fdToRef.second);
@@ -184,7 +182,7 @@ ZeroconfClient::handleEvents(
     }
 
 out:
-    for (std::pair<int const, std::unique_ptr<DNSServiceRef>> const &fdToRef :
+    for (pair<int const, unique_ptr<DNSServiceRef>> const &fdToRef :
             mapFdToServiceRef) {
 
         // FIXME include the correct destructor in the unique pointer

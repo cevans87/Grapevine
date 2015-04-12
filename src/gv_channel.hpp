@@ -27,6 +27,8 @@ namespace grapevine {
 template <class T>
 class Channel {
     public:
+        using fdsRdWr = std::pair<int, int> const;
+
         // IN capacity - Number of items the channel will hold with no
         //      consumer.
         Channel(
@@ -262,7 +264,7 @@ Channel<T>::put(
         }
     }
 
-    for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
+    for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
         // Let selectors know we made data available.
         char msg; // Don't care what's in here.
         write(fds.second, &msg, sizeof(msg));
@@ -320,7 +322,7 @@ Channel<T>::get_nowait(
     _uItemsBegin = (_uItemsBegin + 1) % (_uCapacity + 1);
     --_uItemsCount;
 
-    for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
+    for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
         // Pull the msg out of the pipe.
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
@@ -330,7 +332,7 @@ Channel<T>::get_nowait(
         }
     }
 
-    for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
+    for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
         // Let selectors know we made space.
         char msg; // Don't care what's in here.
         write(fds.second, &msg, sizeof(msg));
@@ -373,7 +375,7 @@ Channel<T>::put_nowait(
     _items.at(uxPut) = move(*itemIn);
     ++_uItemsCount;
 
-    for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
+    for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
         // Pull the msg out of the pipe.
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
@@ -383,7 +385,7 @@ Channel<T>::put_nowait(
         }
     }
 
-    for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
+    for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
         // Let selectors know we made data available.
         char msg; // Don't care what's in here.
         write(fds.second, &msg, sizeof(msg));
@@ -555,10 +557,10 @@ Channel<T>::close()
 
     // Anyone selecting on this channel needs to wake up and find out it's
     // closed.
-    for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
+    for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
         write(fds.second, &msg, sizeof(msg));
     }
-    for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
+    for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
         write(fds.second, &msg, sizeof(msg));
     }
 
