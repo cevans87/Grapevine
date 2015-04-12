@@ -7,7 +7,11 @@ project (grapevine)
 
 # FIXME cevans87: stop forcing clang++, just prefer it.
 if (NOT GV_COMPILER)
-    set(GV_COMPILER "clang++")
+    if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+        set(GV_COMPILER "g++")
+    elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+        set(GV_COMPILER "clang++")
+    endif()
 endif()
 
 if (NOT GV_BUILD)
@@ -49,8 +53,8 @@ endforeach()
 ##############################################################################
 
 set(GV_FLAGS "${GV_FLAGS} -fPIC")
+set(GV_FLAGS "${GV_FLAGS} --std=c++11")
 if (GV_COMPILER STREQUAL "clang++")
-    set(GV_FLAGS "${GV_FLAGS} --std=c++11")
     set(GV_FLAGS "${GV_FLAGS} --stdlib=libc++")
 endif()
 
@@ -71,8 +75,9 @@ if (GV_COMPILER STREQUAL "clang++")
 
     # gtest annoyances
     set(GV_FLAGS "${GV_FLAGS} -Wno-global-constructors")
-    list(APPEND CMAKE_CXX_FLAGS ${GV_FLAGS})
 endif()
+
+list(APPEND CMAKE_CXX_FLAGS ${GV_FLAGS})
 
 ##############################################################################
 # Build Type
