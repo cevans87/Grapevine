@@ -26,7 +26,18 @@ enum GV_ERROR : int
     GV_ERROR_SYMBOLS
 };
 
-extern char const * const gv_error_strings[];
+#ifndef GV_DEBUG
+char const * const gv_error_strings[] = {NULL};
+#else
+// Redefine error symbol expansion for error code to string array definition.
+#undef GV_ERROR_SYMBOL
+#define GV_ERROR_SYMBOL(symbol) #symbol
+
+char const * const gv_error_strings[] =
+{
+     GV_ERROR_SYMBOLS
+};
+#endif // GV_DEBUG
 
 #endif // GRAPEVINE_TEST_GV_TYPE_HPP_
 
