@@ -4,8 +4,8 @@
 
 #include <future>
 
-#include "gv_browser.hpp"
-#include "gv_util.hpp"
+#include "gv_browser.h"
+#include "gv_util.h"
 
 GV_ERROR
 GV_MDNSHander setBrowseCallback(

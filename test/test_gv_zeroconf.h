@@ -1,0 +1,7 @@
+#ifndef GRAPEVINE_TEST_TEST_GV_ZEROCONF_H_
+#define GRAPEVINE_TEST_TEST_GV_ZEROCONF_H_
+
+#include "gv_zeroconf.h"
+
+#endif // GRAPEVINE_TEST_TEST_GV_ZEROCONF_H_
+

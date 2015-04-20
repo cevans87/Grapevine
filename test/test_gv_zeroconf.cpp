@@ -6,7 +6,7 @@
 #include <condition_variable>
 #include "gtest/gtest.h"
 
-#include "test_gv_zeroconf.hpp"
+#include "test_gv_zeroconf.h"
 
 //using std::chrono;
 using std::condition_variable;

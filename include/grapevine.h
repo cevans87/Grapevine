@@ -1,5 +1,5 @@
-#ifndef GRAPEVINE_INCLUDE_GRAPEVINE_HPP_
-#define GRAPEVINE_INCLUDE_GRAPEVINE_HPP_
+#ifndef GRAPEVINE_INCLUDE_GRAPEVINE_H_
+#define GRAPEVINE_INCLUDE_GRAPEVINE_H_
 #include <zmq.hpp>
 
 #include "gv_browser.hpp"
@@ -32,5 +32,5 @@ class GV_Subscriber
         GV_Browser _gv_browser;
 };
 
-#endif // GRAPEVINE_INCLUDE_GRAPEVINE_HPP_
+#endif // GRAPEVINE_INCLUDE_GRAPEVINE_H_
 

@@ -1,5 +1,5 @@
-#ifndef GRAPEVINE_TEST_GV_TYPE_HPP_
-#define GRAPEVINE_TEST_GV_TYPE_HPP_
+#ifndef GRAPEVINE_TEST_GV_TYPE_H_
+#define GRAPEVINE_TEST_GV_TYPE_H_
 
 #include <memory>
 
@@ -39,5 +39,5 @@ char const * const gv_error_strings[] =
 };
 #endif // GV_DEBUG
 
-#endif // GRAPEVINE_TEST_GV_TYPE_HPP_
+#endif // GRAPEVINE_TEST_GV_TYPE_H_
 

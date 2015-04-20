@@ -1,5 +1,5 @@
-#ifndef GRAPEVINE_SRC_GV_UTIL_HPP_
-#define GRAPEVINE_SRC_GV_UTIL_HPP_
+#ifndef GRAPEVINE_SRC_GV_UTIL_H_
+#define GRAPEVINE_SRC_GV_UTIL_H_
 #include <stdio.h>
 
 // Parameter input/output hints for function prototypes and definitions.
@@ -37,5 +37,5 @@ int gv_safe_free(T **mem);
 template <typename T>
 int gv_safe_delete(T **mem);
 
-#endif // GRAPEVINE_SRC_GV_UTIL_HPP_
+#endif // GRAPEVINE_SRC_GV_UTIL_H_
 

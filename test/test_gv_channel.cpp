@@ -3,7 +3,7 @@
 #include <chrono>
 #include <memory>
 
-#include "test_gv_channel.hpp"
+#include "test_gv_channel.h"
 #include "gtest/gtest.h"
 
 // TODO test select for channels.
@@ -21,18 +21,18 @@ namespace gv = grapevine;
 // IN bClose - close channel after finished?
 static void
 generic_putter(
-    IN gv::Channel<int> *chan,
+    IN gv::Channel<int> *pChan,
     IN int nItems,
     IN bool bClose
     )
 {
     for (int i = 0; i < nItems; ++i) {
         std::unique_ptr<int> a = std::unique_ptr<int>(new int(i));
-        chan->put(&a);
+        pChan->put(&a);
     }
 
     if (bClose) {
-        chan->close();
+        pChan->close();
     }
 }
 
@@ -41,13 +41,13 @@ generic_putter(
 // Returns sum of all ints gotten from channel.
 static int
 accumulator_getter(
-    IN gv::Channel<int> *chan
+    IN gv::Channel<int> *pChan
     )
 {
     int ret = 0;
     std::unique_ptr<int> a;
 
-    while (GV_ERROR_SUCCESS == chan->get(&a)) {
+    while (GV_ERROR_SUCCESS == pChan->get(&a)) {
         ret += *a;
     }
 
@@ -59,7 +59,7 @@ accumulator_getter(
 // Returns sum of all ints gotten from channel.
 static int
 nowait_getter(
-    IN gv::Channel<int> *chan
+    IN gv::Channel<int> *pChan
     )
 {
     GV_ERROR error;
@@ -67,7 +67,7 @@ nowait_getter(
     std::unique_ptr<int> a;
 
     do {
-        error = chan->get_nowait(&a);
+        error = pChan->get_nowait(&a);
         if (GV_ERROR_SUCCESS == error) {
             ret += *a;
         }
@@ -83,7 +83,7 @@ nowait_getter(
 // IN bClose - close channel after finished?
 static void
 nowait_putter(
-    IN gv::Channel<int> *chan,
+    IN gv::Channel<int> *pChan,
     IN int nItems,
     IN bool bClose
     )
@@ -92,12 +92,12 @@ nowait_putter(
     for (int i = 0; i < nItems; ++i) {
         std::unique_ptr<int> a = std::unique_ptr<int>(new int(i));
         do {
-            error = chan->put_nowait(&a);
+            error = pChan->put_nowait(&a);
         } while (GV_ERROR_SUCCESS != error);
     }
 
     if (bClose) {
-        chan->close();
+        pChan->close();
     }
 }
 
@@ -109,21 +109,22 @@ capacity_test(
     )
 {
     int nItems = g_nItems;
-    gv::Channel<int> *chan = new gv::Channel<int>(capacity);
+    //gv::Channel<int> *chan = new gv::Channel<int>(capacity);
+    gv::Channel<int> chan(capacity);
 
     // closure to validate items coming out of a channel.
-    std::function<void(void)> custom_getter = [chan, nItems] () {
+    std::function<void(void)> custom_getter = [&] () {
         std::unique_ptr<int> a;
 
         for (int i = 0; i < nItems; ++i) {
-            chan->get(&a);
+            chan.get(&a);
             EXPECT_EQ(i, *a);
         }
     };
 
     // Start putter thread.
     std::future<void> fut = std::async(std::launch::async,
-            generic_putter, chan, nItems, false);
+            generic_putter, &chan, nItems, false);
 
     // Validate items coming out of channel.
     custom_getter();
@@ -139,25 +140,25 @@ nowait_getter_capacity_test(
 {
     int accum = 0;
     int expect = ((nItems - 1) * nItems) / 2; // Sum of 0 to (n - 1)
-    gv::Channel<int> *chan = new gv::Channel<int>(capacity);
+    gv::Channel<int> chan(capacity);
     std::vector<std::future<void>> putter_futures;
     std::vector<std::future<int>> getter_futures;
 
     for (unsigned int i = 0; i < nPutters; ++i) {
         putter_futures.emplace_back(std::async(std::launch::async,
-                generic_putter, chan, nItems, false));
+                generic_putter, &chan, nItems, false));
     }
 
     for (int i = 0; i < g_nThreadsMed; ++i) {
         getter_futures.emplace_back(std::async(std::launch::async,
-                nowait_getter, chan));
+                nowait_getter, &chan));
     }
 
     for (std::future<void> &fut: putter_futures) {
         fut.get();
     }
 
-    chan->close();
+    chan.close();
 
     for (std::future<int> &fut: getter_futures) {
         accum += fut.get();
@@ -176,25 +177,25 @@ nowait_putter_capacity_test(
 {
     int accum = 0;
     int expect = ((nItems - 1) * nItems) / 2; // Sum of 0 to (n - 1)
-    gv::Channel<int> *chan = new gv::Channel<int>(capacity);
+    gv::Channel<int> chan(capacity);
     std::vector<std::future<void>> putter_futures;
     std::vector<std::future<int>> getter_futures;
 
     for (unsigned int i = 0; i < g_nThreadsMed; ++i) {
         putter_futures.emplace_back(std::async(std::launch::async,
-                nowait_putter, chan, nItems, false));
+                nowait_putter, &chan, nItems, false));
     }
 
     for (unsigned int i = 0; i < nGetters; ++i) {
         getter_futures.emplace_back(std::async(std::launch::async,
-                accumulator_getter, chan));
+                accumulator_getter, &chan));
     }
 
     for (std::future<void> &fut: putter_futures) {
         fut.get();
     }
 
-    chan->close();
+    chan.close();
 
     for (std::future<int> &fut: getter_futures) {
         accum += fut.get();
@@ -218,18 +219,18 @@ TEST(channel, many_getters) {
     int nItems = g_nItems;
     int expect = ((nItems - 1) * nItems) / 2; // Sum of 0 to (n - 1)
     int accum = 0;
-    gv::Channel<int> *chan = new gv::Channel<int>(1);
+    gv::Channel<int> chan(1);
     std::vector<std::future<int>> getter_futures;
 
     // Start putter thread. Sum of all values it will put equals 'expect'
     // variable.
     std::future<void> putter_future = std::async(std::launch::async,
-            generic_putter, chan, nItems, true);
+            generic_putter, &chan, nItems, true);
 
     // Start many getters to contend for channel items.
     for (int i = 0; i < g_nThreadsHi; ++i) {
         getter_futures.emplace_back(std::async(std::launch::async,
-                accumulator_getter, chan));
+                accumulator_getter, &chan));
     }
 
     // Sum values from all getter threads.
@@ -268,7 +269,7 @@ TEST(channel, med_putters) {
     int nItems = g_nItems / g_nThreadsMed;
     int expect = ((nItems - 1) * nItems) / 2; // Sum of 0 to (n - 1)
     int accum = 0;
-    gv::Channel<int> *chan = new gv::Channel<int>(1);
+    gv::Channel<int> chan(1);
     std::vector<std::future<void>> putter_futures;
     std::vector<std::future<int>> getter_futures;
 
@@ -276,19 +277,19 @@ TEST(channel, med_putters) {
     // variable.
     for (int i = 0; i < g_nThreadsMed; ++i) {
         putter_futures.emplace_back(std::async(std::launch::async,
-                generic_putter, chan, nItems, false));
+                generic_putter, &chan, nItems, false));
     }
 
     // Start single getter.
     std::future<int> getter_future = std::async(std::launch::async,
-            accumulator_getter, chan);
+            accumulator_getter, &chan);
 
     // Make sure each putter finishes.
     for (std::future<void> &done: putter_futures) {
         done.get();
     }
     // Close the channel so the getter knows to finish.
-    chan->close();
+    chan.close();
 
     accum = getter_future.get();
 
@@ -300,16 +301,16 @@ TEST(channel, empty_after_close) {
     int nItems = 1000;
     int accum = 0;
     int expect = ((nItems - 1) * nItems) / 2;
-    gv::Channel<int> *chan = new gv::Channel<int>(1000);
+    gv::Channel<int> chan(1000);
     std::vector<std::future<int>> getter_futures;
 
     // Fill the channel.
-    generic_putter(chan, nItems, true);
+    generic_putter(&chan, nItems, true);
 
     // Start a few threads to get items from the channel.
     for (int i = 0; i < g_nThreadsMed; ++i) {
         getter_futures.emplace_back(std::async(std::launch::async,
-                accumulator_getter, chan));
+                accumulator_getter, &chan));
     }
 
     // Sum results from all getters.

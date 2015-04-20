@@ -30,7 +30,7 @@ set(c-sources
         grapevine.cpp
         gv_zeroconf.cpp
         gv_util.cpp
-        gv_channel.cpp)
+        )
 
 set(c-sources-test
         gv_test.cpp
@@ -80,18 +80,18 @@ list(APPEND CMAKE_CXX_FLAGS ${GV_FLAGS})
 
 ##############################################################################
 # Build Type
-# Build types are Release, Debug, Test, DebugTest
+# Build types are release, test
 # Ex: In build folder, cmake -DCMAKE_BUILD_TYPE=Debug ..
 ##############################################################################
-if (GV_BUILD STREQUAL "Debug" OR GV_BUILD STREQUAL "DebugTest")
+if (GV_DEBUG)
     add_definitions(
             -g
-            -DGV_DEBUG=20)
-    message("Building Debug")
+            -DGV_DEBUG=${GV_DEBUG})
+    message("Building with GV_DEBUG=${GV_DEBUG}")
 endif()
 
-if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
-    message("Building Test")
+if (GV_BUILD STREQUAL "test")
+    message("Building test")
     if (GV_COMPILER STREQUAL "clang++")
         add_definitions(
                 -DGTEST_USE_OWN_TR1_TUPLE=1
@@ -106,7 +106,7 @@ include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/src/
         ${CMAKE_CURRENT_SOURCE_DIR}/include/
         ${CMAKE_CURRENT_SOURCE_DIR}/test/)
-if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
+if (GV_BUILD STREQUAL "test")
     include_directories(
             ${CMAKE_CURRENT_SOURCE_DIR}/test/)
     include_directories(SYSTEM
@@ -148,7 +148,7 @@ add_definitions(
 
 add_library(grapevine SHARED ${sources})
 
-if (GV_BUILD STREQUAL "Test" OR GV_BUILD STREQUAL "DebugTest")
+if (GV_BUILD STREQUAL "test")
     add_executable(test_grapevine ${sources-test})
     target_link_libraries(test_grapevine
         grapevine

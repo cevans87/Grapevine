@@ -3,7 +3,7 @@
 
 #include <dns_sd.h>
 
-#include "gv_type.hpp"
+#include "gv_type.h"
 
 // FIXME cevans87: What should the callback give?
 using gv_browse_callback = DNSServiceBrowseReply;

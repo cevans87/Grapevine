@@ -1,10 +1,10 @@
-#ifndef GRAPEVINE_TEST_GV_TEST_HPP_
-#define GRAPEVINE_TEST_GV_TEST_HPP_
+#ifndef GRAPEVINE_TEST_GV_TEST_H_
+#define GRAPEVINE_TEST_GV_TEST_H_
 
-#include "gv_type.hpp"
-#include "test_gv_channel.hpp"
-//#include "test_gv_zeroconf.hpp"
-//#include "test_gv_browser.hpp"
+#include "gv_type.h"
+#include "test_gv_channel.h"
+//#include "test_gv_zeroconf.h"
+//#include "test_gv_browser.h"
 
 /*
 #define GV_TEST_INIT() int success = 0; int tests = 0; bool passed_test;
@@ -72,5 +72,5 @@
     } while (0)
 
 */
-#endif // GRAPEVINE_TEST_HPP_GV_TEST_HPP_
+#endif // GRAPEVINE_TEST_GV_TEST_H_
 

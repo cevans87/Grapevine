@@ -1,11 +1,11 @@
-#ifndef GRAPEVINE_SRC_GV_ZEROCONF_HPP_
-#define GRAPEVINE_SRC_GV_ZEROCONF_HPP_
+#ifndef GRAPEVINE_SRC_GV_ZEROCONF_H_
+#define GRAPEVINE_SRC_GV_ZEROCONF_H_
 
 #include <dns_sd.h>
 #include <functional>
 #include <future>
 
-#include "gv_type.hpp"
+#include "gv_type.h"
 #include "gv_channel.hpp"
 
 namespace grapevine {
@@ -70,5 +70,5 @@ using UP_ZeroconfClient = std::unique_ptr<ZeroconfClient>;
 
 } // namespace grapevine
 
-#endif // GRAPEVINE_SRC_GV_ZEROCONF_HPP_
+#endif // GRAPEVINE_SRC_GV_ZEROCONF_H_
 

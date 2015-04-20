@@ -3,7 +3,7 @@
 
 #include <dns_sd.h>
 
-#include "gv_type.hpp"
+#include "gv_type.h"
 
 // FIXME cevans87: What should the callback give?
 typedef int (*gv_callback)(void);

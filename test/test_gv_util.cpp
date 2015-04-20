@@ -1,4 +1,4 @@
 #include <gtest/gtest.h>
-#include "gv_test.hpp"
-#include "gv_util.hpp"
+#include "gv_test.h"
+#include "gv_util.h"
 

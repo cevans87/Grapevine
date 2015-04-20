@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "gv_type.hpp"
-#include "gv_util.hpp"
+#include "gv_type.h"
+#include "gv_util.h"
 
 
 template <typename T>

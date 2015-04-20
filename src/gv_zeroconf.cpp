@@ -8,8 +8,8 @@
 #include <functional>
 #include <map>
 
-#include "gv_zeroconf.hpp"
-#include "gv_util.hpp"
+#include "gv_zeroconf.h"
+#include "gv_util.h"
 
 using std::unique_ptr;
 using std::pair;

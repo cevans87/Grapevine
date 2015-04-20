@@ -8,8 +8,8 @@
 #include <fcntl.h> // For O_NONBLOCK on pipes
 #include <unistd.h> // pipes
 
-#include "gv_util.hpp"
-#include "gv_type.hpp"
+#include "gv_util.h"
+#include "gv_type.h"
 
 // TODO test "select" for channels
 // TODO implement RAII class for checkout/return of what's in channel?
