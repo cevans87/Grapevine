@@ -3,6 +3,8 @@
 
 #include <memory>
 
+namespace grapevine {
+
 // Simple expansion for GV_ERROR enum definition. Redefine later with #
 // expansion for gv_error_strings definition.
 #define GV_ERROR_SYMBOL(symbol) symbol
@@ -37,6 +39,9 @@ char const * const gv_error_strings[] =
 {
      GV_ERROR_SYMBOLS
 };
+
+} // namespace grapevine
+
 #endif // GV_DEBUG
 
 #endif // GRAPEVINE_TEST_GV_TYPE_H_

@@ -5,6 +5,8 @@
 
 #include "gv_type.h"
 
+namespace grapevine {
+
 // FIXME cevans87: What should the callback give?
 using gv_browse_callback = DNSServiceBrowseReply;
 using gv_browse_context = void *;
@@ -45,6 +47,8 @@ class GV_Browser
 };
 
 using UP_GV_Browser = std::unique_ptr<GV_Browser>;
+
+} // namespace grapevine
 
 #endif // GRAPEVINE_SRC_GV_BROWSER_HPP_
 

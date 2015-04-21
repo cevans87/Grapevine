@@ -47,7 +47,7 @@ accumulator_getter(
     int ret = 0;
     std::unique_ptr<int> a;
 
-    while (GV_ERROR_SUCCESS == pChan->get(&a)) {
+    while (gv::GV_ERROR_SUCCESS == pChan->get(&a)) {
         // FIXME ASSERT_NE(nullptr, a);
         ret += *a;
     }
@@ -63,17 +63,17 @@ nowait_getter(
     IN gv::Channel<int> *pChan
     )
 {
-    GV_ERROR error;
+    gv::GV_ERROR error;
     int ret = 0;
     std::unique_ptr<int> a;
 
     do {
         error = pChan->get_nowait(&a);
-        if (GV_ERROR_SUCCESS == error) {
+        if (gv::GV_ERROR_SUCCESS == error) {
             // FIXME ASSERT_NE(nullptr, a);
             ret += *a;
         }
-    } while (GV_ERROR_CHANNEL_CLOSED != error);
+    } while (gv::GV_ERROR_CHANNEL_CLOSED != error);
 
     return ret;
 }
@@ -90,12 +90,12 @@ nowait_putter(
     IN bool bClose
     )
 {
-    GV_ERROR error;
+    gv::GV_ERROR error;
     for (int i = 0; i < nItems; ++i) {
         std::unique_ptr<int> a = std::unique_ptr<int>(new int(i));
         do {
             error = pChan->put_nowait(&a);
-        } while (GV_ERROR_SUCCESS != error);
+        } while (gv::GV_ERROR_SUCCESS != error);
     }
 
     if (bClose) {
@@ -111,6 +111,7 @@ capacity_test(
     )
 {
     int nItems = g_nItems;
+    gv::GV_ERROR error;
     //gv::Channel<int> *chan = new gv::Channel<int>(capacity);
     gv::Channel<int> chan(capacity);
 
@@ -119,9 +120,11 @@ capacity_test(
         std::unique_ptr<int> a;
 
         for (int i = 0; i < nItems; ++i) {
-            chan.get(&a);
+            error = chan.get(&a);
+            ASSERT_EQ(error, gv::GV_ERROR_SUCCESS);
             ASSERT_NE(nullptr, a);
             ASSERT_EQ(i, *a);
+            a = nullptr;
         }
     };
 

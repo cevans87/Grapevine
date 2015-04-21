@@ -4,6 +4,8 @@
 
 #include "gv_browser.hpp"
 
+namespace grapevine {
+
 enum GV_FLAG : unsigned int
 {
     GV_FLAG_BLOCK           = 1 << 0,
@@ -31,6 +33,8 @@ class GV_Subscriber
         zmq::context_t _zmq_context;
         GV_Browser _gv_browser;
 };
+
+} // namespace grapevine
 
 #endif // GRAPEVINE_INCLUDE_GRAPEVINE_H_
 

@@ -205,11 +205,7 @@ Channel<T>::get(
         BAIL_ON_GV_ERROR(error);
     }
 
-    if (_bClosed) {
-        // Channel already closed
-        error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
-    } else if (0 < _qItems.size()) {
+    if (0 < _qItems.size()) {
         // Just take the first item.
         *itemOut = move(_qItems.front());
         _qItems.pop();
@@ -227,18 +223,22 @@ Channel<T>::get(
         *itemOut = move(*_qPutters.front().item);
         (*_qPutters.front().cv).notify_one();
         _qPutters.pop();
+    } else if (_bClosed) {
+        // Channel already closed
+        error = GV_ERROR_CHANNEL_CLOSED;
+        BAIL_ON_GV_ERROR(error);
     } else {
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
         lkItem.lock();
         _qGetters.emplace(WaitingItem<T>{&cvItemOut, &mtxItemOut, itemOut});
-        //GV_DEBUG_PRINT("getters has %lu items", _qGetters.size());
         lkChannel.unlock();
 
+        *itemOut = nullptr;
         while (nullptr == *itemOut && !_bClosed) {
             cvItemOut.wait(lkItem);
         }
-        if (_bClosed) {
+        if (nullptr == *itemOut && _bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
             BAIL_ON_GV_ERROR(error);
         }
@@ -325,7 +325,6 @@ Channel<T>::put(
     } else if (_qItems.size() < _uCapacity) {
         // No getters waiting, but space available in channel.
         _qItems.push(move(*itemIn));
-        _cvGetter.notify_one();
         inc_notify_data_available();
     } else {
         // No getters waiting, no space. We have to block until a getter moves
@@ -337,7 +336,7 @@ Channel<T>::put(
         while (nullptr != *itemIn && !_bClosed) {
             cvItemIn.wait(lkItem);
         }
-        if (_bClosed) {
+        if (nullptr != *itemIn && _bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
             BAIL_ON_GV_ERROR(error);
         }
@@ -596,9 +595,14 @@ Channel<T>::close()
     }
 
     // Wake all blocked threads up so they can bail. The channel is closed.
-    _cvGetter.notify_all();
-    _cvPutter.notify_all();
-    _cvOverPutter.notify_all();
+    while (0 < _qGetters.size()) {
+        (*_qGetters.front().cv).notify_one();
+        _qGetters.pop();
+    }
+    while (0 < _qPutters.size()) {
+        (*_qPutters.front().cv).notify_one();
+        _qPutters.pop();
+    }
 
 out:
     return error;
