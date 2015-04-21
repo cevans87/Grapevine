@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <queue>
 
 #include <fcntl.h> // For O_NONBLOCK on pipes
 #include <unistd.h> // pipes
@@ -13,8 +14,16 @@
 
 // TODO test "select" for channels
 // TODO implement RAII class for checkout/return of what's in channel?
+// TODO Use per-getter and per-putter mutexes to reduce contention for main mutex.
 
 namespace grapevine {
+
+template <typename T>
+struct WaitingItem {
+    std::condition_variable *cv;
+    std::mutex *mtx;
+    std::unique_ptr<T> *item;
+};
 
 // Allows thread-safe passing of unique_pointers. Items may be put into the
 // channel without blocking until it reaches capacity, at which time any
@@ -129,6 +138,13 @@ class Channel {
         std::map<int, int> _mapfdNotifyDataAvailable;
         std::map<int, int> _mapfdNotifySpaceAvailable;
 
+        // Queued/blocked items from getters or putters. Either putters xor
+        // getters may be blocked at any given moment.
+        std::queue<WaitingItem<T>> _qGetters;
+        std::queue<WaitingItem<T>> _qPutters;
+
+        std::queue<std::unique_ptr<T>> _qItems;
+
         // Storage and required information for a circular fifo for items.
         // FIXME just use a std queue...
         std::vector<std::unique_ptr<T>> _items;
@@ -150,6 +166,10 @@ class Channel {
         bool _bClosed;
 
         char __padding__[3];
+
+        // TODO comments
+        GV_ERROR inc_notify_space_available();
+        GV_ERROR inc_notify_data_available();
 };
 
 template <class T>
@@ -158,10 +178,7 @@ Channel<T>::Channel(
 ) {
 
     _uCapacity = capacity;
-    // At capacity 0, we still want the ability to transfer one item, so min
-    // cap is 1. Putting an item exceeding the cap should block the
-    // 'overputter' thread until an item is taken, though.
-    _items.resize(capacity + 1);
+    _items.resize(capacity);
     _uItemsBegin = 0;
     _uItemsCount = 0;
 
@@ -178,49 +195,55 @@ Channel<T>::get(
     OUT std::unique_ptr<T> *itemOut
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    ssize_t bytesRead;
-    std::unique_lock<std::mutex> lk(_mtx);
+    std::mutex mtxItemOut;
+    std::unique_lock<std::mutex> lkItem(mtxItemOut, std::defer_lock);
+    std::condition_variable cvItemOut;
+    std::unique_lock<std::mutex> lkChannel(_mtx);
 
-    ++_uWaitingGetters;
+    if (nullptr == itemOut) {
+        error = GV_ERROR_INVALID_ARG;
+        BAIL_ON_GV_ERROR(error);
+    }
 
-    // Block until item is available.
-    while (0 >= _uItemsCount) {
-        // Still no item to get. Maybe woken by a call to 'close'.
+    if (_bClosed) {
+        // Channel already closed
+        error = GV_ERROR_CHANNEL_CLOSED;
+        BAIL_ON_GV_ERROR(error);
+    } else if (0 < _qItems.size()) {
+        // Just take the first item.
+        *itemOut = move(_qItems.front());
+        _qItems.pop();
+        inc_notify_space_available();
+        if (0 < _qPutters.size()) {
+            // There are putters waiting. Help them out.
+            std::lock_guard<std::mutex> lg(*_qPutters.front().mtx);
+            _qItems.push(move(*_qPutters.front().item));
+            (*_qPutters.front().cv).notify_one();
+            _qPutters.pop();
+        }
+    } else if (0 < _qPutters.size()) {
+        // There are putters waiting.
+        std::lock_guard<std::mutex> lg(*_qPutters.front().mtx);
+        *itemOut = move(*_qPutters.front().item);
+        (*_qPutters.front().cv).notify_one();
+        _qPutters.pop();
+    } else {
+        // No getters waiting, no space. We have to block until a getter moves
+        // our item into the channel or takes it off our hands.
+        lkItem.lock();
+        _qGetters.emplace(WaitingItem<T>{&cvItemOut, &mtxItemOut, itemOut});
+        //GV_DEBUG_PRINT("getters has %lu items", _qGetters.size());
+        lkChannel.unlock();
+
+        while (nullptr == *itemOut && !_bClosed) {
+            cvItemOut.wait(lkItem);
+        }
         if (_bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
             BAIL_ON_GV_ERROR(error);
         }
-        _cvGetter.wait(lk);
     }
-
-    // Retrieve item.
-    *itemOut = move(_items.at(_uItemsBegin));
-    _uItemsBegin = (_uItemsBegin + 1) % (_uCapacity + 1);
-    --_uItemsCount;
-
-    for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
-        // Pull the msg out of the pipe.
-        char msg; // Don't care what's in here.
-        bytesRead = read(fds.first, &msg, sizeof(msg));
-        if (0 == bytesRead) {
-            // FIXME this deserves more severity than just a debug print.
-            GV_DEBUG_PRINT("Bytes missing from DataAvailable notify pipe");
-        }
-    }
-
-    for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
-        // Let selectors know we made space.
-        char msg; // Don't care what's in here.
-        write(fds.second, &msg, sizeof(msg));
-    }
-
-    // Let putters know we made space.
-    _cvOverPutter.notify_one();
-    _cvPutter.notify_one();
-
-    ++_uItemsTransferred;
 out:
-    --_uWaitingGetters;
     return error;
 
 error:
@@ -229,30 +252,32 @@ error:
 
 template <class T>
 GV_ERROR
-Channel<T>::put(
-    IN std::unique_ptr<T> *itemIn
-    )
-{
-    GV_ERROR error = GV_ERROR_SUCCESS;
-    unsigned int uxPut;
-    unsigned int uTransferredBegin;
+Channel<T>::inc_notify_space_available(
+) {
     ssize_t bytesRead;
-    std::unique_lock<std::mutex> lk(_mtx);
 
-    // Block until there is space or channel closes.
-    while (_uItemsCount > _uCapacity && !_bClosed) {
-        _cvPutter.wait(lk);
+    for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
+        // Pull the msg out of the pipe.
+        char msg; // Don't care what's in here.
+        bytesRead = read(fds.first, &msg, sizeof(msg));
+        if (0 == bytesRead) {
+            // FIXME this deserves more severity than just a debug print.
+            GV_DEBUG_PRINT("Bytes missing from SpaceAvailable notify pipe");
+        }
     }
-
-    if (_bClosed) {
-        error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
+    for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
+        // Let selectors know we made data available.
+        char msg; // Don't care what's in here.
+        write(fds.second, &msg, sizeof(msg));
     }
+    return GV_ERROR_SUCCESS;
+}
 
-    // Put the item in channel storage.
-    uxPut = (_uItemsBegin + _uItemsCount) % (_uCapacity + 1);
-    _items.at(uxPut) = move(*itemIn);
-    ++_uItemsCount;
+template <class T>
+GV_ERROR
+Channel<T>::inc_notify_data_available(
+) {
+    ssize_t bytesRead;
 
     for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
         // Pull the msg out of the pipe.
@@ -263,33 +288,59 @@ Channel<T>::put(
             GV_DEBUG_PRINT("Bytes missing from SpaceAvailable notify pipe");
         }
     }
-
     for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
         // Let selectors know we made data available.
         char msg; // Don't care what's in here.
         write(fds.second, &msg, sizeof(msg));
     }
+    return GV_ERROR_SUCCESS;
+}
 
-    // Let getters know we made an item availalble.
-    _cvGetter.notify_one();
+template <class T>
+GV_ERROR
+Channel<T>::put(
+    IN std::unique_ptr<T> *itemIn
+) {
+    GV_ERROR error = GV_ERROR_SUCCESS;
+    std::mutex mtxItemIn;
+    std::unique_lock<std::mutex> lkItem(mtxItemIn, std::defer_lock);
+    std::condition_variable cvItemIn;
+    std::unique_lock<std::mutex> lkChannel(_mtx);
 
-    // If we sleep because we're an "overputter", another "overputter" might
-    // sneak in and make it look like we are still over capacity just before we
-    // wake up again. If _ItemsTransferred changes, we can still tell that we
-    // are supposed to return.
-    uTransferredBegin = _uItemsTransferred;
-    while ((_uItemsCount > _uCapacity) &&
-            (uTransferredBegin == _uItemsTransferred) &&
-            (0 == _uWaitingGetters)) {
+    if (nullptr == itemIn) {
+        error = GV_ERROR_INVALID_ARG;
+        BAIL_ON_GV_ERROR(error);
+    }
+
+    if (_bClosed) {
+        // Channel already closed
+        error = GV_ERROR_CHANNEL_CLOSED;
+        BAIL_ON_GV_ERROR(error);
+    } else if (0 < _qGetters.size()) {
+        // There are getters waiting. Give it directly to a getter.
+        std::lock_guard<std::mutex> lg(*_qGetters.front().mtx);
+        *_qGetters.front().item = move(*itemIn);
+        (*_qGetters.front().cv).notify_one();
+        _qGetters.pop();
+    } else if (_qItems.size() < _uCapacity) {
+        // No getters waiting, but space available in channel.
+        _qItems.push(move(*itemIn));
+        _cvGetter.notify_one();
+        inc_notify_data_available();
+    } else {
+        // No getters waiting, no space. We have to block until a getter moves
+        // our item into the channel or takes it off our hands.
+        lkItem.lock();
+        _qPutters.emplace(WaitingItem<T>{&cvItemIn, &mtxItemIn, itemIn});
+        lkChannel.unlock();
+
+        while (nullptr != *itemIn && !_bClosed) {
+            cvItemIn.wait(lkItem);
+        }
         if (_bClosed) {
-            *itemIn = move(_items.at(uxPut));
             error = GV_ERROR_CHANNEL_CLOSED;
             BAIL_ON_GV_ERROR(error);
         }
-        // Even though we placed an item, channel would be over capacity if we
-        // left now. We're not really down with item ownership. Wait until one
-        // item is taken from channel.
-        _cvOverPutter.wait(lk);
     }
 
 out:
@@ -306,8 +357,12 @@ Channel<T>::get_nowait(
     )
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    ssize_t bytesRead;
     std::unique_lock<std::mutex> lk(_mtx);
+
+    if (nullptr == itemOut || nullptr != *itemOut) {
+        error = GV_ERROR_INVALID_ARG;
+        BAIL_ON_GV_ERROR(error);
+    }
 
     // Make sure we can do a non-blocking 'get'.
     if (_bClosed && _uItemsCount <= 0) {
@@ -319,24 +374,10 @@ Channel<T>::get_nowait(
 
     // Retrieve item.
     *itemOut = move(_items.at(_uItemsBegin));
-    _uItemsBegin = (_uItemsBegin + 1) % (_uCapacity + 1);
+    _uItemsBegin = (_uItemsBegin + 1) % _uCapacity;
     --_uItemsCount;
 
-    for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
-        // Pull the msg out of the pipe.
-        char msg; // Don't care what's in here.
-        bytesRead = read(fds.first, &msg, sizeof(msg));
-        if (0 == bytesRead) {
-            // FIXME this deserves more severity than just a debug print.
-            GV_DEBUG_PRINT("Bytes missing from DataAvailable notify pipe");
-        }
-    }
-
-    for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
-        // Let selectors know we made space.
-        char msg; // Don't care what's in here.
-        write(fds.second, &msg, sizeof(msg));
-    }
+    inc_notify_space_available();
 
     // Let putters know we made space.
     _cvPutter.notify_one();
@@ -358,8 +399,12 @@ Channel<T>::put_nowait(
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
     unsigned int uxPut;
-    ssize_t bytesRead;
     std::unique_lock<std::mutex> lk(_mtx);
+
+    if (nullptr == itemIn || nullptr != *itemIn) {
+        error = GV_ERROR_INVALID_ARG;
+        BAIL_ON_GV_ERROR(error);
+    }
 
     // Make sure we can do a non-blocking 'put'.
     if (_bClosed) {
@@ -371,25 +416,11 @@ Channel<T>::put_nowait(
     BAIL_ON_GV_ERROR(error);
 
     // Put the item in channel storage.
-    uxPut = (_uItemsBegin + _uItemsCount) % (_uCapacity + 1);
+    uxPut = (_uItemsBegin + _uItemsCount) % _uCapacity;
     _items.at(uxPut) = move(*itemIn);
     ++_uItemsCount;
 
-    for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
-        // Pull the msg out of the pipe.
-        char msg; // Don't care what's in here.
-        bytesRead = read(fds.first, &msg, sizeof(msg));
-        if (0 == bytesRead) {
-            // FIXME this deserves more severity than just a debug print.
-            GV_DEBUG_PRINT("Bytes missing from SpaceAvailable notify pipe");
-        }
-    }
-
-    for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
-        // Let selectors know we made data available.
-        char msg; // Don't care what's in here.
-        write(fds.second, &msg, sizeof(msg));
-    }
+    inc_notify_data_available();
 
     // Let getters know we made an item availalble.
     _cvGetter.notify_one();

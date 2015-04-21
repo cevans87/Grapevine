@@ -48,6 +48,7 @@ accumulator_getter(
     std::unique_ptr<int> a;
 
     while (GV_ERROR_SUCCESS == pChan->get(&a)) {
+        // FIXME ASSERT_NE(nullptr, a);
         ret += *a;
     }
 
@@ -69,6 +70,7 @@ nowait_getter(
     do {
         error = pChan->get_nowait(&a);
         if (GV_ERROR_SUCCESS == error) {
+            // FIXME ASSERT_NE(nullptr, a);
             ret += *a;
         }
     } while (GV_ERROR_CHANNEL_CLOSED != error);
@@ -118,7 +120,8 @@ capacity_test(
 
         for (int i = 0; i < nItems; ++i) {
             chan.get(&a);
-            EXPECT_EQ(i, *a);
+            ASSERT_NE(nullptr, a);
+            ASSERT_EQ(i, *a);
         }
     };
 
