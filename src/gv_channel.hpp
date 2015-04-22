@@ -14,12 +14,14 @@
 
 // TODO test "select" for channels
 // TODO implement RAII class for checkout/return of what's in channel?
-// TODO Use per-getter and per-putter mutexes to reduce contention for main mutex.
 
 namespace grapevine {
 
+// When the channel is full or empty, putters or getters may be blocked. We use
+// this class to take care of the neccessary item transfer without having to
+// reacquire the global channel lock.
 template <typename T>
-struct WaitingItem {
+struct WaitingTransfer {
     std::condition_variable cv;
     std::mutex mtx;
     std::unique_ptr<T> *item;
@@ -30,9 +32,8 @@ struct WaitingItem {
 // further calls to 'put' will block until some item is removed. 'get' will get
 // an item from the channel, blocking until an item is available. If capacity
 // is 0, items may still be passed but each 'get' blocks until a matching 'put'
-// is called and vice-versa. Items are fifo. No guarantees are made about
-// ordering for multiple threads blocked on 'put' or 'get' once space or items
-// become available.
+// is called and vice-versa. Items are fifo. Priority for multiple threads
+// blocked on 'put' or 'get' is also fifo.
 template <class T>
 class Channel {
     public:
@@ -134,8 +135,8 @@ class Channel {
 
         // Queued/blocked items from getters or putters. Either putters xor
         // getters may be blocked at any given moment.
-        std::queue<WaitingItem<T>> _qGetters;
-        std::queue<WaitingItem<T>> _qPutters;
+        std::queue<WaitingTransfer<T>> _qGetters;
+        std::queue<WaitingTransfer<T>> _qPutters;
 
         std::queue<std::unique_ptr<T>> _qItems;
 
@@ -202,18 +203,20 @@ Channel<T>::get(
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
         _qGetters.emplace();
-        WaitingItem<T> &waiting = _qGetters.back();
-        waiting.item = itemOut;
+        WaitingTransfer<T> &transfer = _qGetters.back();
+        transfer.item = itemOut;
         // Switching from using the channel lock to the new waiting lock
         // increases the total number of locks we have to take in this case,
         // but we won't ever have to touch the channel lock again. Better for
         // parallelization, worse for individual performance.
-        std::unique_lock<std::mutex> lkWaiting(waiting.mtx);
+        std::unique_lock<std::mutex> lkTransfer(transfer.mtx);
         lkChannel.unlock();
 
+        // Getters are stuck until a putter shows up. The putter will transfer
+        // an item to *itemOut for us.
         *itemOut = nullptr;
         while (nullptr == *itemOut && !_bClosed) {
-            waiting.cv.wait(lkWaiting);
+            transfer.cv.wait(lkTransfer);
         }
         if (nullptr == *itemOut && _bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
@@ -307,17 +310,19 @@ Channel<T>::put(
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
         _qPutters.emplace();
-        WaitingItem<T> &waiting = _qPutters.back();
-        waiting.item = itemIn;
-        // Switching from using the channel lock to the new waiting lock
+        WaitingTransfer<T> &transfer = _qPutters.back();
+        transfer.item = itemIn;
+        // Switching from using the channel lock to the new transfer lock
         // increases the total number of locks we have to take in this case,
         // but we won't ever have to touch the channel lock again. Better for
         // parallelization, worse for individual performance.
-        std::unique_lock<std::mutex> lkWaiting(waiting.mtx);
+        std::unique_lock<std::mutex> lkTransfer(transfer.mtx);
         lkChannel.unlock();
 
+        // Putters are stuck until a getter shows up. The getter will transfer
+        // the item from *itemIn for us.
         while (nullptr != *itemIn && !_bClosed) {
-            waiting.cv.wait(lkWaiting);
+            transfer.cv.wait(lkTransfer);
         }
         if (nullptr != *itemIn && _bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
@@ -588,7 +593,7 @@ Channel<T>::close()
         write(fds.second, &msg, sizeof(msg));
     }
 
-    // Wake all blocked threads up so they can bail. The channel is closed.
+    // Wake all blocked threads up so they can bail.
     while (0 < _qGetters.size()) {
         std::lock_guard<std::mutex> lgGetter(_qGetters.front().mtx);
         _qGetters.front().cv.notify_one();
