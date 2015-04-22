@@ -20,8 +20,8 @@ namespace grapevine {
 
 template <typename T>
 struct WaitingItem {
-    std::condition_variable *cv;
-    std::mutex *mtx;
+    std::condition_variable cv;
+    std::mutex mtx;
     std::unique_ptr<T> *item;
 };
 
@@ -127,12 +127,6 @@ class Channel {
 
     private:
         std::mutex _mtx;
-        // For notifying getters that items are available.
-        std::condition_variable _cvGetter;
-        // For notifying putters that space is available.
-        std::condition_variable _cvPutter;
-        // For notifying highest priority putter that they may leave.
-        std::condition_variable _cvOverPutter;
 
         // map writeFd to readFd.
         std::map<int, int> _mapfdNotifyDataAvailable;
@@ -145,22 +139,7 @@ class Channel {
 
         std::queue<std::unique_ptr<T>> _qItems;
 
-        // Storage and required information for a circular fifo for items.
-        // FIXME just use a std queue...
-        std::vector<std::unique_ptr<T>> _items;
         unsigned int _uCapacity;
-        unsigned int _uItemsBegin;
-        unsigned int _uItemsCount;
-
-        unsigned int _uItemsTransferred;
-
-        // Number of getters waiting for an item. Used to detect that an item
-        // may be 'put' without blocking when no space is available in channel.
-        unsigned int _uWaitingGetters;
-
-        // Since the existence of a putter means one item will exist in _items
-        // as an "overput", we don't need a _uWaitingPutters to tell us we can
-        // do a non-blocking 'get'.
 
         // Whether to accept items.
         bool _bClosed;
@@ -178,14 +157,6 @@ Channel<T>::Channel(
 ) {
 
     _uCapacity = capacity;
-    _items.resize(capacity);
-    _uItemsBegin = 0;
-    _uItemsCount = 0;
-
-    _uItemsTransferred = 0;
-
-    _uWaitingGetters = 0;
-
     _bClosed = false;
 }
 
@@ -212,16 +183,16 @@ Channel<T>::get(
         inc_notify_space_available();
         if (0 < _qPutters.size()) {
             // There are putters waiting. Help them out.
-            std::lock_guard<std::mutex> lg(*_qPutters.front().mtx);
+            std::lock_guard<std::mutex> lg(_qPutters.front().mtx);
             _qItems.push(move(*_qPutters.front().item));
-            (*_qPutters.front().cv).notify_one();
+            _qPutters.front().cv.notify_one();
             _qPutters.pop();
         }
     } else if (0 < _qPutters.size()) {
         // There are putters waiting.
-        std::lock_guard<std::mutex> lg(*_qPutters.front().mtx);
+        std::lock_guard<std::mutex> lg(_qPutters.front().mtx);
         *itemOut = move(*_qPutters.front().item);
-        (*_qPutters.front().cv).notify_one();
+        _qPutters.front().cv.notify_one();
         _qPutters.pop();
     } else if (_bClosed) {
         // Channel already closed
@@ -230,13 +201,19 @@ Channel<T>::get(
     } else {
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
-        lkItem.lock();
-        _qGetters.emplace(WaitingItem<T>{&cvItemOut, &mtxItemOut, itemOut});
+        _qGetters.emplace();
+        WaitingItem<T> &waiting = _qGetters.back();
+        waiting.item = itemOut;
+        // Switching from using the channel lock to the new waiting lock
+        // increases the total number of locks we have to take in this case,
+        // but we won't ever have to touch the channel lock again. Better for
+        // parallelization, worse for individual performance.
+        std::unique_lock<std::mutex> lkWaiting(waiting.mtx);
         lkChannel.unlock();
 
         *itemOut = nullptr;
         while (nullptr == *itemOut && !_bClosed) {
-            cvItemOut.wait(lkItem);
+            waiting.cv.wait(lkWaiting);
         }
         if (nullptr == *itemOut && _bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
@@ -318,9 +295,9 @@ Channel<T>::put(
         BAIL_ON_GV_ERROR(error);
     } else if (0 < _qGetters.size()) {
         // There are getters waiting. Give it directly to a getter.
-        std::lock_guard<std::mutex> lg(*_qGetters.front().mtx);
+        std::lock_guard<std::mutex> lg(_qGetters.front().mtx);
         *_qGetters.front().item = move(*itemIn);
-        (*_qGetters.front().cv).notify_one();
+        _qGetters.front().cv.notify_one();
         _qGetters.pop();
     } else if (_qItems.size() < _uCapacity) {
         // No getters waiting, but space available in channel.
@@ -329,12 +306,18 @@ Channel<T>::put(
     } else {
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
-        lkItem.lock();
-        _qPutters.emplace(WaitingItem<T>{&cvItemIn, &mtxItemIn, itemIn});
+        _qPutters.emplace();
+        WaitingItem<T> &waiting = _qPutters.back();
+        waiting.item = itemIn;
+        // Switching from using the channel lock to the new waiting lock
+        // increases the total number of locks we have to take in this case,
+        // but we won't ever have to touch the channel lock again. Better for
+        // parallelization, worse for individual performance.
+        std::unique_lock<std::mutex> lkWaiting(waiting.mtx);
         lkChannel.unlock();
 
         while (nullptr != *itemIn && !_bClosed) {
-            cvItemIn.wait(lkItem);
+            waiting.cv.wait(lkWaiting);
         }
         if (nullptr != *itemIn && _bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
@@ -353,36 +336,45 @@ template <class T>
 GV_ERROR
 Channel<T>::get_nowait(
     OUT std::unique_ptr<T> *itemOut
-    )
-{
+) {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    std::unique_lock<std::mutex> lk(_mtx);
+    std::mutex mtxItemOut;
+    std::unique_lock<std::mutex> lkItem(mtxItemOut, std::defer_lock);
+    std::condition_variable cvItemOut;
+    std::unique_lock<std::mutex> lkChannel(_mtx);
 
-    if (nullptr == itemOut || nullptr != *itemOut) {
+    if (nullptr == itemOut) {
         error = GV_ERROR_INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     }
 
-    // Make sure we can do a non-blocking 'get'.
-    if (_bClosed && _uItemsCount <= 0) {
+    if (0 < _qItems.size()) {
+        // Just take the first item.
+        *itemOut = move(_qItems.front());
+        _qItems.pop();
+        inc_notify_space_available();
+        if (0 < _qPutters.size()) {
+            // There are putters waiting. Help them out.
+            std::lock_guard<std::mutex> lg(_qPutters.front().mtx);
+            _qItems.push(move(*_qPutters.front().item));
+            _qPutters.front().cv.notify_one();
+            _qPutters.pop();
+        }
+    } else if (0 < _qPutters.size()) {
+        // There are putters waiting.
+        std::lock_guard<std::mutex> lg(_qPutters.front().mtx);
+        *itemOut = move(*_qPutters.front().item);
+        _qPutters.front().cv.notify_one();
+        _qPutters.pop();
+    } else if (_bClosed) {
+        // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
-    } else if (_uItemsCount <= 0) {
+        BAIL_ON_GV_ERROR(error);
+    } else {
         error = GV_ERROR_CHANNEL_EMPTY;
+        BAIL_ON_GV_ERROR(error);
     }
-    BAIL_ON_GV_ERROR(error);
 
-    // Retrieve item.
-    *itemOut = move(_items.at(_uItemsBegin));
-    _uItemsBegin = (_uItemsBegin + 1) % _uCapacity;
-    --_uItemsCount;
-
-    inc_notify_space_available();
-
-    // Let putters know we made space.
-    _cvPutter.notify_one();
-    _cvOverPutter.notify_one();
-
-    ++_uItemsTransferred;
 out:
     return error;
 
@@ -397,32 +389,34 @@ Channel<T>::put_nowait(
     )
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    unsigned int uxPut;
-    std::unique_lock<std::mutex> lk(_mtx);
+    std::mutex mtxItemIn;
+    std::unique_lock<std::mutex> lkItem(mtxItemIn, std::defer_lock);
+    std::condition_variable cvItemIn;
+    std::unique_lock<std::mutex> lkChannel(_mtx);
 
-    if (nullptr == itemIn || nullptr != *itemIn) {
+    if (nullptr == itemIn) {
         error = GV_ERROR_INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     }
 
-    // Make sure we can do a non-blocking 'put'.
     if (_bClosed) {
+        // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
-    } else if ((_uItemsCount == _uCapacity && 0 == _uWaitingGetters) ||
-            (_uItemsCount > _uCapacity)) {
+        BAIL_ON_GV_ERROR(error);
+    } else if (0 < _qGetters.size()) {
+        // There are getters waiting. Give it directly to a getter.
+        std::lock_guard<std::mutex> lg(_qGetters.front().mtx);
+        *_qGetters.front().item = move(*itemIn);
+        _qGetters.front().cv.notify_one();
+        _qGetters.pop();
+    } else if (_qItems.size() < _uCapacity) {
+        // No getters waiting, but space available in channel.
+        _qItems.push(move(*itemIn));
+        inc_notify_data_available();
+    } else {
         error = GV_ERROR_CHANNEL_FULL;
+        BAIL_ON_GV_ERROR(error);
     }
-    BAIL_ON_GV_ERROR(error);
-
-    // Put the item in channel storage.
-    uxPut = (_uItemsBegin + _uItemsCount) % _uCapacity;
-    _items.at(uxPut) = move(*itemIn);
-    ++_uItemsCount;
-
-    inc_notify_data_available();
-
-    // Let getters know we made an item availalble.
-    _cvGetter.notify_one();
 
 out:
     return error;
@@ -458,7 +452,7 @@ Channel<T>::get_notify_data_available_fd(
         _mapfdNotifyDataAvailable.insert(
                 std::pair<int, int>(pipeFd[0], pipeFd[1]));
 
-        for (i = 0; i < _uItemsCount; ++i) {
+        for (i = 0; i < _qItems.size(); ++i) {
             write(pipeFd[1], &msg, sizeof(msg));
         }
     } else {
@@ -526,7 +520,7 @@ Channel<T>::get_notify_space_available_fd(
         _mapfdNotifyDataAvailable.insert(
                 std::pair<int, int>(pipeFd[0], pipeFd[1]));
 
-        for (i = 0; i < _uCapacity - _uItemsCount; ++i) {
+        for (i = 0; i < _uCapacity - _qItems.size(); ++i) {
             write(pipeFd[1], &msg, sizeof(msg));
         }
     } else {
@@ -576,7 +570,7 @@ Channel<T>::close()
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
     char msg; // Don't care what's in here.
-    std::unique_lock<std::mutex> lk(_mtx);
+    std::lock_guard<std::mutex> lg(_mtx);
 
     if (_bClosed) {
         // Doing the work a second time would be bad.
@@ -596,11 +590,13 @@ Channel<T>::close()
 
     // Wake all blocked threads up so they can bail. The channel is closed.
     while (0 < _qGetters.size()) {
-        (*_qGetters.front().cv).notify_one();
+        std::lock_guard<std::mutex> lgGetter(_qGetters.front().mtx);
+        _qGetters.front().cv.notify_one();
         _qGetters.pop();
     }
     while (0 < _qPutters.size()) {
-        (*_qPutters.front().cv).notify_one();
+        std::lock_guard<std::mutex> lgPutter(_qPutters.front().mtx);
+        _qPutters.front().cv.notify_one();
         _qPutters.pop();
     }
 

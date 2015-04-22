@@ -6,13 +6,14 @@ project (grapevine)
 # CXXFLAGS="-02 -g -stdlib=libc++"
 
 # FIXME cevans87: stop forcing clang++, just prefer it.
-if (NOT GV_COMPILER)
-    if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-        set(GV_COMPILER "g++")
-    elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
-        set(GV_COMPILER "clang++")
-    endif()
-endif()
+set(GV_COMPILER "clang++")
+#if (NOT GV_COMPILER)
+#    if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+#        set(GV_COMPILER "g++")
+#    elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+#        set(GV_COMPILER "clang++")
+#    endif()
+#endif()
 
 if (NOT GV_BUILD)
     set(GV_BUILD "release")
