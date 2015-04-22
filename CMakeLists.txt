@@ -30,13 +30,11 @@ message("Using compiler ${CMAKE_CXX_COMPILER}")
 set(c-sources
         grapevine.cpp
         gv_zeroconf.cpp
-        gv_util.cpp
         )
 
 set(c-sources-test
         gv_test.cpp
         test_gv_zeroconf.cpp
-        test_gv_util.cpp
         test_gv_channel.cpp
         test_gv_type.cpp)
 
@@ -84,11 +82,33 @@ list(APPEND CMAKE_CXX_FLAGS ${GV_FLAGS})
 # Build types are release, test
 # Ex: In build folder, cmake -DCMAKE_BUILD_TYPE=Debug ..
 ##############################################################################
-if (GV_DEBUG)
-    add_definitions(
-            -g
-            -DGV_DEBUG=${GV_DEBUG})
-    message("Building with GV_DEBUG=${GV_DEBUG}")
+
+# FIXME find a better way to set debug levels than this. Keeping this synced
+# with the implemented levels is a maintenance problem.
+if (GV_DEBUG_LEVEL)
+    add_definitions(-g)
+    if (GV_DEBUG_LEVEL STREQUAL "OFF")
+        add_definitions(-DGV_DEBUG_LEVEL=0)
+    elseif (GV_DEBUG_LEVEL STREQUAL "SEVERE")
+        add_definitions(-DGV_DEBUG_LEVEL=1)
+    elseif (GV_DEBUG_LEVEL STREQUAL "ERROR")
+        add_definitions(-DGV_DEBUG_LEVEL=2)
+    elseif (GV_DEBUG_LEVEL STREQUAL "WARNING")
+        add_definitions(-DGV_DEBUG_LEVEL=3)
+    elseif (GV_DEBUG_LEVEL STREQUAL "INFO")
+        add_definitions(-DGV_DEBUG_LEVEL=4)
+    elseif (GV_DEBUG_LEVEL STREQUAL "ENTRY")
+        add_definitions(-DGV_DEBUG_LEVEL=5)
+    elseif (GV_DEBUG_LEVEL STREQUAL "PARM")
+        add_definitions(-DGV_DEBUG_LEVEL=6)
+    elseif (GV_DEBUG_LEVEL STREQUAL "DEBUG")
+        add_definitions(-DGV_DEBUG_LEVEL=7)
+    elseif (GV_DEBUG_LEVEL STREQUAL "EXPECTED")
+        add_definitions(-DGV_DEBUG_LEVEL=8)
+    else()
+        message(FATAL_ERROR "Invalid debug level: ${GV_DEBUG_LEVEL}")
+    endif()
+    message("Building with GV_DEBUG_LEVEL=${GV_DEBUG_LEVEL}")
 endif()
 
 if (GV_BUILD STREQUAL "test")

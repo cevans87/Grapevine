@@ -198,7 +198,7 @@ Channel<T>::get(
     } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
     } else {
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
@@ -220,7 +220,7 @@ Channel<T>::get(
         }
         if (nullptr == *itemOut && _bClosed) {
             error = GV_ERROR_CHANNEL_CLOSED;
-            BAIL_ON_GV_ERROR(error);
+            BAIL_ON_GV_ERROR_EXPECTED(error);
         }
     }
 out:
@@ -295,7 +295,7 @@ Channel<T>::put(
     if (_bClosed) {
         // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
     } else if (0 < _qGetters.size()) {
         // There are getters waiting. Give it directly to a getter.
         std::lock_guard<std::mutex> lg(_qGetters.front().mtx);
@@ -374,10 +374,10 @@ Channel<T>::get_nowait(
     } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
     } else {
         error = GV_ERROR_CHANNEL_EMPTY;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
     }
 
 out:
@@ -407,7 +407,7 @@ Channel<T>::put_nowait(
     if (_bClosed) {
         // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
     } else if (0 < _qGetters.size()) {
         // There are getters waiting. Give it directly to a getter.
         std::lock_guard<std::mutex> lg(_qGetters.front().mtx);
@@ -420,7 +420,7 @@ Channel<T>::put_nowait(
         inc_notify_data_available();
     } else {
         error = GV_ERROR_CHANNEL_FULL;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
     }
 
 out:

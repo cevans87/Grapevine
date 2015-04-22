@@ -10,39 +10,40 @@ namespace grapevine {
 #define GV_ERROR_SYMBOL(symbol) symbol
 
 // All error symbols defined here and only here.
-#define GV_ERROR_SYMBOLS                                    \
-    GV_ERROR_SYMBOL(GV_ERROR_SUCCESS),                      \
-    GV_ERROR_SYMBOL(GV_ERROR_INVALID_ARG),                  \
-    GV_ERROR_SYMBOL(GV_ERROR_NOOP),                         \
-    GV_ERROR_SYMBOL(GV_ERROR_LOCK_UNAVAILABLE),             \
-    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_FULL),                 \
-    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_EMPTY),                \
-    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_CLOSED),               \
-    GV_ERROR_SYMBOL(GV_ERROR_ALREADY_ENABLED),              \
-    GV_ERROR_SYMBOL(GV_ERROR_ALREADY_DISABLED),             \
-    GV_ERROR_SYMBOL(GV_ERROR_EMFILE),                       \
-    GV_ERROR_SYMBOL(GV_NUM_ERRORS)        // KEEP IN LAST PLACE!
+#define GV_ERROR_SYMBOLS                                                    \
+    GV_ERROR_SYMBOL(GV_ERROR_SUCCESS),                                      \
+    GV_ERROR_SYMBOL(GV_ERROR_NOOP),                                         \
+    GV_ERROR_SYMBOL(GV_ERROR_LOCK_UNAVAILABLE),                             \
+    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_FULL),                                 \
+    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_EMPTY),                                \
+    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_CLOSED),                               \
+    GV_ERROR_SYMBOL(GV_ERROR_ALREADY_ENABLED),                              \
+    GV_ERROR_SYMBOL(GV_ERROR_ALREADY_DISABLED),                             \
+    GV_ERROR_SYMBOL(GV_ERROR_INVALID_ARG),                                  \
+    GV_ERROR_SYMBOL(GV_ERROR_EMFILE),                                       \
+    GV_ERROR_SYMBOL(GV_NUM_ERRORS)                      // KEEP IN LAST PLACE!
 
 enum GV_ERROR : int
 {
     GV_ERROR_SYMBOLS
 };
 
-#ifndef GV_DEBUG
+#ifndef GV_DEBUG_LEVEL
 char const * const gv_error_strings[] = {NULL};
 #else
 // Redefine error symbol expansion for error code to string array definition.
 #undef GV_ERROR_SYMBOL
-#define GV_ERROR_SYMBOL(symbol) #symbol
+#define GV_ERROR_SYMBOL(symbol) (strchr(strchr(#symbol, '_') + 1, '_') + 1)
+//#define GV_ERROR_SYMBOL(symbol) #symbol
 
 char const * const gv_error_strings[] =
 {
      GV_ERROR_SYMBOLS
 };
 
-} // namespace grapevine
+#endif // GV_DEBUG_LEVEL
 
-#endif // GV_DEBUG
+} // namespace grapevine
 
 #endif // GRAPEVINE_TEST_GV_TYPE_H_
 
