@@ -241,8 +241,9 @@ Channel<T, D...>::inc_notify_space_available(
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
-            // FIXME this deserves more severity than just a debug print.
-            GV_DEBUG_PRINT("Bytes missing from SpaceAvailable notify pipe");
+            // FIXME turn this into a severe error and bail.
+            GV_DEBUG_PRINT_SEV(GV_DEBUG_SEVERE,
+                "Bytes missing from SpaceAvailable notify pipe");
         }
     }
     for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
@@ -264,8 +265,9 @@ Channel<T, D...>::inc_notify_data_available(
         char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
-            // FIXME this deserves more severity than just a debug print.
-            GV_DEBUG_PRINT("Bytes missing from SpaceAvailable notify pipe");
+            // FIXME turn this into a severe error and bail.
+            GV_DEBUG_PRINT_SEV(GV_DEBUG_SEVERE,
+                "Bytes missing from SpaceAvailable notify pipe");
         }
     }
     for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
