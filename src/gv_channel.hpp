@@ -170,21 +170,15 @@ Channel<T, D...>::get(
     OUT std::unique_ptr<T, D...> *itemOut
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    std::mutex mtxItemOut;
-    std::unique_lock<std::mutex> lkItem(mtxItemOut, std::defer_lock);
-    std::condition_variable cvItemOut;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemOut) {
         error = GV_ERROR_INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
-    }
-
-    if (0 < _qItems.size()) {
+    } else if (0 < _qItems.size()) {
         // Just take the first item.
         *itemOut = move(_qItems.front());
         _qItems.pop();
-        inc_notify_space_available();
         if (0 < _qPutters.size()) {
             // There are putters waiting. Help them out.
             std::lock_guard<std::mutex> lg(_qPutters.front().mtx);
@@ -226,6 +220,9 @@ Channel<T, D...>::get(
             BAIL_ON_GV_ERROR_EXPECTED(error);
         }
     }
+
+    inc_notify_space_available();
+
 out:
     return error;
 
@@ -285,17 +282,12 @@ Channel<T, D...>::put(
     IN std::unique_ptr<T, D...> *itemIn
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    std::mutex mtxItemIn;
-    std::unique_lock<std::mutex> lkItem(mtxItemIn, std::defer_lock);
-    std::condition_variable cvItemIn;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemIn) {
         error = GV_ERROR_INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
-    }
-
-    if (_bClosed) {
+    } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_EXPECTED(error);
@@ -308,7 +300,6 @@ Channel<T, D...>::put(
     } else if (_qItems.size() < _uCapacity) {
         // No getters waiting, but space available in channel.
         _qItems.push(move(*itemIn));
-        inc_notify_data_available();
     } else {
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
@@ -333,6 +324,8 @@ Channel<T, D...>::put(
         }
     }
 
+    inc_notify_data_available();
+
 out:
     return error;
 
@@ -346,21 +339,15 @@ Channel<T, D...>::get_nowait(
     OUT std::unique_ptr<T, D...> *itemOut
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    std::mutex mtxItemOut;
-    std::unique_lock<std::mutex> lkItem(mtxItemOut, std::defer_lock);
-    std::condition_variable cvItemOut;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemOut) {
         error = GV_ERROR_INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
-    }
-
-    if (0 < _qItems.size()) {
+    } else if (0 < _qItems.size()) {
         // Just take the first item.
         *itemOut = move(_qItems.front());
         _qItems.pop();
-        inc_notify_space_available();
         if (0 < _qPutters.size()) {
             // There are putters waiting. Help them out.
             std::lock_guard<std::mutex> lg(_qPutters.front().mtx);
@@ -383,6 +370,8 @@ Channel<T, D...>::get_nowait(
         BAIL_ON_GV_ERROR_EXPECTED(error);
     }
 
+    inc_notify_space_available();
+
 out:
     return error;
 
@@ -397,17 +386,12 @@ Channel<T, D...>::put_nowait(
     )
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
-    std::mutex mtxItemIn;
-    std::unique_lock<std::mutex> lkItem(mtxItemIn, std::defer_lock);
-    std::condition_variable cvItemIn;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemIn) {
         error = GV_ERROR_INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
-    }
-
-    if (_bClosed) {
+    } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR_CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_EXPECTED(error);
@@ -420,11 +404,12 @@ Channel<T, D...>::put_nowait(
     } else if (_qItems.size() < _uCapacity) {
         // No getters waiting, but space available in channel.
         _qItems.push(move(*itemIn));
-        inc_notify_data_available();
     } else {
         error = GV_ERROR_CHANNEL_FULL;
         BAIL_ON_GV_ERROR_EXPECTED(error);
     }
+
+    inc_notify_data_available();
 
 out:
     return error;

@@ -227,7 +227,7 @@ ZeroconfClient::handleEvents(
     while (true) {
         error = (*pupchAddServiceRef)->get_notify_data_available_fd(&fdAddRef);
         BAIL_ON_GV_ERROR(error);
-        error = (*pupchAddServiceRef)->get_notify_data_available_fd(&fdRemoveRef);
+        error = (*pupchRemoveServiceRef)->get_notify_data_available_fd(&fdRemoveRef);
         BAIL_ON_GV_ERROR(error);
 
         FD_ZERO(&readFds);
@@ -249,7 +249,8 @@ ZeroconfClient::handleEvents(
                 BAIL_ON_GV_ERROR(error);
 
                 int dnssdFd = DNSServiceRefSockFD(*upServiceRef);
-                mapFdToServiceRef.emplace(dnssdFd, move(upServiceRef));
+                //mapFdToServiceRef.emplace(dnssdFd, move(upServiceRef));
+                mapFdToServiceRef.insert(std::pair<int, UPServiceRef>(dnssdFd, move(upServiceRef)));
             }
             if (FD_ISSET(fdRemoveRef, &readFds)) {
                 UPServiceRef upServiceRef;
