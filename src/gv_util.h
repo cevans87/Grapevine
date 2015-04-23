@@ -54,10 +54,9 @@ char const * const gv_debug_strings[] =
 #define GV_DEBUG_PRINT(fmt, ...)
 #define GV_DEBUG_PRINT_SEV(severity, fmt, ...)
 #else
-#define __GV_FILE__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define __GV_FILE__ (strrchr(__FILE__, '/') ? \
+        strrchr(__FILE__, '/') + 1 : __FILE__)
 
-// FIXME add debug levels. BAIL_ON_ERROR debug prints get really spammy in
-// tests.
 #define GV_DEBUG_PRINT_SEV(severity, fmt, ...)                              \
     do {                                                                    \
         if (GV_DEBUG_LEVEL <= (severity)) {                                 \

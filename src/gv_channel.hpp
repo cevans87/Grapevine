@@ -14,17 +14,18 @@
 
 // TODO test "select" for channels
 // TODO implement RAII class for checkout/return of what's in channel?
+// TODO Allow capacity to change?
 
 namespace grapevine {
 
 // When the channel is full or empty, putters or getters may be blocked. We use
 // this class to take care of the neccessary item transfer without having to
 // reacquire the global channel lock.
-template <typename T>
+template <typename T, typename... D>
 struct WaitingTransfer {
     std::condition_variable cv;
     std::mutex mtx;
-    std::unique_ptr<T> *item;
+    std::unique_ptr<T, D...> *item;
 };
 
 // Allows thread-safe passing of unique_pointers. Items may be put into the
@@ -34,10 +35,12 @@ struct WaitingTransfer {
 // is 0, items may still be passed but each 'get' blocks until a matching 'put'
 // is called and vice-versa. Items are fifo. Priority for multiple threads
 // blocked on 'put' or 'get' is also fifo.
-template <class T>
+template <typename T, typename... D>
 class Channel {
     public:
         using fdsRdWr = std::pair<int, int> const;
+
+        Channel() = delete;
 
         // IN capacity - Number of items the channel will hold with no
         //      consumer.
@@ -50,7 +53,7 @@ class Channel {
         // Returns SUCCESS, or CHANNEL_CLOSED if channel was closed
         //      before item could be retrieved.
         GV_ERROR get(
-            OUT std::unique_ptr<T> *itemOut);
+            OUT std::unique_ptr<T, D...> *itemOut);
 
         // Puts an item into the channel. Blocks until space in the channel is
         // available or if capacity is 0, a 'get' is called to take the item.
@@ -59,21 +62,21 @@ class Channel {
         // Returns SUCCESS, or CHANNEL_CLOSED if channel was closed
         //      before item could be transferred.
         GV_ERROR put(
-            IN std::unique_ptr<T> *itemIn);
+            IN std::unique_ptr<T, D...> *itemIn);
 
         // Same as get(), but fails if an item is not immediately available.
         // Returns SUCCESS, or CHANNEL_CLOSED if channel was closed
         //      before item could be retrieved, or CHANNEL_EMPTY if no
         //      item was available.
         GV_ERROR get_nowait(
-            OUT std::unique_ptr<T> *itemOut);
+            OUT std::unique_ptr<T, D...> *itemOut);
 
         // Same as put(), but fails if space is not immediately available.
         // Returns SUCCESS, or CHANNEL_CLOSED if channel was closed
         //      before item could be retrieved, or CHANNEL_FULL if no
         //      space was available and no 'get' was waiting.
         GV_ERROR put_nowait(
-            IN std::unique_ptr<T> *itemIn);
+            IN std::unique_ptr<T, D...> *itemIn);
 
         // Provides read end of a pipe that is written to when data becomes
         // available in the channel. Pipe is automatically cleared of the
@@ -135,10 +138,10 @@ class Channel {
 
         // Queued/blocked items from getters or putters. Either putters xor
         // getters may be blocked at any given moment.
-        std::queue<WaitingTransfer<T>> _qGetters;
-        std::queue<WaitingTransfer<T>> _qPutters;
+        std::queue<WaitingTransfer<T, D...>> _qGetters;
+        std::queue<WaitingTransfer<T, D...>> _qPutters;
 
-        std::queue<std::unique_ptr<T>> _qItems;
+        std::queue<std::unique_ptr<T, D...>> _qItems;
 
         unsigned int _uCapacity;
 
@@ -152,8 +155,8 @@ class Channel {
         GV_ERROR inc_notify_data_available();
 };
 
-template <class T>
-Channel<T>::Channel(
+template <typename T, typename... D>
+Channel<T, D...>::Channel(
     IN unsigned int capacity
 ) {
 
@@ -161,10 +164,10 @@ Channel<T>::Channel(
     _bClosed = false;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::get(
-    OUT std::unique_ptr<T> *itemOut
+Channel<T, D...>::get(
+    OUT std::unique_ptr<T, D...> *itemOut
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
     std::mutex mtxItemOut;
@@ -203,7 +206,7 @@ Channel<T>::get(
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
         _qGetters.emplace();
-        WaitingTransfer<T> &transfer = _qGetters.back();
+        WaitingTransfer<T, D...> &transfer = _qGetters.back();
         transfer.item = itemOut;
         // Switching from using the channel lock to the new waiting lock
         // increases the total number of locks we have to take in this case,
@@ -230,9 +233,9 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::inc_notify_space_available(
+Channel<T, D...>::inc_notify_space_available(
 ) {
     ssize_t bytesRead;
 
@@ -253,9 +256,9 @@ Channel<T>::inc_notify_space_available(
     return GV_ERROR_SUCCESS;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::inc_notify_data_available(
+Channel<T, D...>::inc_notify_data_available(
 ) {
     ssize_t bytesRead;
 
@@ -276,10 +279,10 @@ Channel<T>::inc_notify_data_available(
     return GV_ERROR_SUCCESS;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::put(
-    IN std::unique_ptr<T> *itemIn
+Channel<T, D...>::put(
+    IN std::unique_ptr<T, D...> *itemIn
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
     std::mutex mtxItemIn;
@@ -310,7 +313,7 @@ Channel<T>::put(
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
         _qPutters.emplace();
-        WaitingTransfer<T> &transfer = _qPutters.back();
+        WaitingTransfer<T, D...> &transfer = _qPutters.back();
         transfer.item = itemIn;
         // Switching from using the channel lock to the new transfer lock
         // increases the total number of locks we have to take in this case,
@@ -337,10 +340,10 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::get_nowait(
-    OUT std::unique_ptr<T> *itemOut
+Channel<T, D...>::get_nowait(
+    OUT std::unique_ptr<T, D...> *itemOut
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
     std::mutex mtxItemOut;
@@ -387,10 +390,10 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::put_nowait(
-    IN std::unique_ptr<T> *itemIn
+Channel<T, D...>::put_nowait(
+    IN std::unique_ptr<T, D...> *itemIn
     )
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
@@ -430,9 +433,9 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::get_notify_data_available_fd(
+Channel<T, D...>::get_notify_data_available_fd(
     INOUT int *pfdNotify
     )
 {
@@ -472,9 +475,9 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::close_notify_data_available_fd(
+Channel<T, D...>::close_notify_data_available_fd(
     INOUT int *pfdNotify
     )
 {
@@ -501,9 +504,9 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::get_notify_space_available_fd(
+Channel<T, D...>::get_notify_space_available_fd(
     INOUT int *pfdNotify
     )
 {
@@ -540,9 +543,9 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::close_notify_space_available_fd(
+Channel<T, D...>::close_notify_space_available_fd(
     INOUT int *pfdNotify
     )
 {
@@ -569,9 +572,9 @@ error:
     goto out;
 }
 
-template <class T>
+template <typename T, typename... D>
 GV_ERROR
-Channel<T>::close()
+Channel<T, D...>::close()
 {
     GV_ERROR error = GV_ERROR_SUCCESS;
     char msg; // Don't care what's in here.
@@ -609,8 +612,8 @@ out:
     return error;
 }
 
-template <typename T>
-using UP_Channel = std::unique_ptr<Channel<T>>;
+template <typename T, typename... D>
+using UPChannel = std::unique_ptr<Channel<T, D...>>;
 
 } // namespace grapevine
 

@@ -1,9 +1,11 @@
 #ifndef GRAPEVINE_SRC_GV_ZEROCONF_H_
 #define GRAPEVINE_SRC_GV_ZEROCONF_H_
 
-#include <dns_sd.h>
 #include <functional>
 #include <future>
+#include <string>
+
+#include <dns_sd.h>
 
 #include "gv_type.h"
 #include "gv_channel.hpp"
@@ -14,7 +16,15 @@ using gv_browse_callback = DNSServiceBrowseReply;
 using gv_resolve_callback = DNSServiceResolveReply;
 using gv_register_callback = DNSServiceRegisterReply;
 
-using gv_browse_context = void *;
+struct UPServiceRefDeleter {
+    void operator()(DNSServiceRef *serviceRef) {
+        DNSServiceRefDeallocate(*serviceRef);
+        delete serviceRef;
+    }
+};
+
+using UPServiceRef = std::unique_ptr<DNSServiceRef, UPServiceRefDeleter>;
+using UPChServiceRef = UPChannel<DNSServiceRef, UPServiceRefDeleter>;
 
 class ZeroconfClient
 {
@@ -30,31 +40,37 @@ class ZeroconfClient
         GV_ERROR enableBrowse();
         GV_ERROR disableBrowse();
 
-        GV_ERROR setResolveCallback(
-            IN char *pszServiceName,
-            IN std::function<void()> callback);
+        GV_ERROR addResolveCallback(
+            IN char const *pszServiceName,
+            IN gv_resolve_callback callback);
         GV_ERROR enableResolve(
             IN char *pszServiceName);
         GV_ERROR disableResolve(
             IN char *pszServiceName);
 
-        GV_ERROR setRegisterCallback(
-            IN char *pszServiceName,
-            IN std::function<void()> callback);
+        GV_ERROR addRegisterCallback(
+            IN char const *pszServiceName,
+            IN gv_register_callback callback);
         GV_ERROR enableRegister(
             IN char *pszServiceName);
         GV_ERROR disableRegister(
             IN char *pszServiceName);
 
     private:
-        // Mutex needed to keep mul
-
-        UP_Channel<DNSServiceRef> _upchAddServiceRef;
+        // FIXME place these things in channels to make the ZeroconfClient
+        // thread safe? That'd be pretty much every member in a channel.
+        UPChServiceRef _upchAddServiceRef;
+        UPChServiceRef _upchRemoveServiceRef;
+        // FIXME add another service ref channel for deleting.
         gv_browse_callback _browseCallback;
         std::future<GV_ERROR> _futHandleEvents;
+        std::vector<DNSServiceRef> _vecOpenBrowseRefs;
+        std::map<std::string, DNSServiceRef> _mapOpenResolveRefs;
+        std::map<std::string, DNSServiceRef> _mapOpenRegisterRefs;
 
         static GV_ERROR handleEvents(
-            IN UP_Channel<DNSServiceRef> const *pupchAddServiceRef);
+            IN UPChServiceRef const *pupchAddServiceRef,
+            IN UPChServiceRef const *pupchRemoveServiceRef);
         static void browseCallback(
             IN DNSServiceRef service,
             IN DNSServiceFlags flags,
@@ -66,7 +82,7 @@ class ZeroconfClient
             IN void *context);
 };
 
-using UP_ZeroconfClient = std::unique_ptr<ZeroconfClient>;
+using UPZeroconfClient = std::unique_ptr<ZeroconfClient>;
 
 } // namespace grapevine
 

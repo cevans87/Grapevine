@@ -53,13 +53,53 @@ TEST(zeroconf, browser) {
         g_bOk = true;
         g_pcvTest->notify_all();
     };
-    //gv::UP_ZeroconfClient upZeroconfClient = gv::UP_ZeroconfClient(new gv::ZeroconfClient());
-    gv::UP_ZeroconfClient upZeroconfClient(new gv::ZeroconfClient());
+    //gv::UPZeroconfClient upZeroconfClient = gv::UPZeroconfClient(new gv::ZeroconfClient());
+    gv::UPZeroconfClient upZeroconfClient(new gv::ZeroconfClient());
     upZeroconfClient->setBrowseCallback(cb);
     upZeroconfClient->enableBrowse();
     while (false == g_bOk) {
         g_pcvTest->wait(lk);
     }
+    EXPECT_EQ(1, 1);
+}
+
+TEST(zeroconf, DNSServiceRegister) {
+    if (nullptr == g_pmtxTest) {
+        g_pmtxTest = new mutex();
+    }
+
+    if (nullptr == g_pcvTest) {
+        g_pcvTest = new condition_variable();
+    }
+    unique_lock<mutex> lk(*g_pmtxTest);
+
+    DNSServiceRegisterReply cb = [](
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+            IN DNSServiceRef service,
+            IN DNSServiceFlags flags,
+            IN DNSServiceErrorType errorCode,
+            IN const char *name,
+            IN const char *type,
+            IN const char *domain,
+            IN void *context) -> void
+#pragma clang diagnostic pop
+    {
+        unique_lock<mutex> ul(*g_pmtxTest, defer_lock);
+        sleep_for(seconds(1));
+        if (false == ul.try_lock()) {
+            return;
+        }
+        g_bOk = true;
+        g_pcvTest->notify_all();
+    };
+    //gv::UPZeroconfClient upZeroconfClient = gv::UPZeroconfClient(new gv::ZeroconfClient());
+    gv::UPZeroconfClient upZeroconfClient(new gv::ZeroconfClient());
+    upZeroconfClient->addRegisterCallback("happy", cb);
+    while (false == g_bOk) {
+        g_pcvTest->wait(lk);
+    }
+    sleep_for(seconds(10));
     EXPECT_EQ(1, 1);
 }
 

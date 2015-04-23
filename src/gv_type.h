@@ -20,6 +20,7 @@ namespace grapevine {
     GV_ERROR_SYMBOL(GV_ERROR_ALREADY_ENABLED),                              \
     GV_ERROR_SYMBOL(GV_ERROR_ALREADY_DISABLED),                             \
     GV_ERROR_SYMBOL(GV_ERROR_INVALID_ARG),                                  \
+    GV_ERROR_SYMBOL(GV_ERROR_KEY_CONFLICT),                                 \
     GV_ERROR_SYMBOL(GV_ERROR_EMFILE),                                       \
     GV_ERROR_SYMBOL(GV_NUM_ERRORS)                      // KEEP IN LAST PLACE!
 
