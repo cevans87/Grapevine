@@ -16,29 +16,19 @@ using std::pair;
 using std::map;
 using std::future;
 using std::launch;
+using std::make_unique;
 
 namespace grapevine {
 
 ZeroconfClient::ZeroconfClient(
 ) {
-    int eventHandlerPipeFd[2];
-    
+    _upchAddServiceRef = make_unique<CHServiceRef>(_ukChannelSize);
 
-    //_upchAddServiceRef{0};
-    _upchAddServiceRef = UPChServiceRef(
-            new Channel<DNSServiceRef, UPServiceRefDeleter>(1));
-
-    _upchRemoveServiceRef = UPChServiceRef(
-            new Channel<DNSServiceRef, UPServiceRefDeleter>(1));
-
-    pipe(eventHandlerPipeFd);
-
-    unique_ptr<int> upHandlerFd(new int(eventHandlerPipeFd[1]));
+    _upchRemoveServiceRef = make_unique<CHServiceRef>(_ukChannelSize);
 
     _futHandleEvents = async(
             launch::async,
             handleEvents,
-            //eventHandlerPipeFd[0], TODO delete
             // FIXME I'd rather use a const rvalue here, but can't use that in
             // an async call. What's the right way to do this?
             &_upchAddServiceRef,
@@ -50,6 +40,7 @@ ZeroconfClient::~ZeroconfClient(
     GV_DEBUG_PRINT("Trying to die\n");
 
     _upchAddServiceRef->close();
+    _upchRemoveServiceRef->close();
 }
 
 void
@@ -213,8 +204,8 @@ error:
 
 GV_ERROR
 ZeroconfClient::handleEvents(
-    IN UPChServiceRef const *pupchAddServiceRef,
-    IN UPChServiceRef const *pupchRemoveServiceRef
+    IN UPCHServiceRef const *pupchAddServiceRef,
+    IN UPCHServiceRef const *pupchRemoveServiceRef
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
     int fdAddRef = -1;

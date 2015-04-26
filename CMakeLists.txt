@@ -51,6 +51,9 @@ endforeach()
 ##############################################################################
 
 set(GV_FLAGS "${GV_FLAGS} -fPIC")
+# FIXME Only include this if we're actually using c++11. This will screw c++14
+# up.
+add_definitions(-DGV_CPP14_COMPATIBILITY)
 set(GV_FLAGS "${GV_FLAGS} --std=c++11")
 if (GV_COMPILER STREQUAL "clang++")
     set(GV_FLAGS "${GV_FLAGS} --stdlib=libc++")

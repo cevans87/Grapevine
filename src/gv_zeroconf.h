@@ -24,7 +24,7 @@ struct UPServiceRefDeleter {
 };
 
 using UPServiceRef = std::unique_ptr<DNSServiceRef, UPServiceRefDeleter>;
-using UPChServiceRef = UPChannel<DNSServiceRef, UPServiceRefDeleter>;
+using UPCHServiceRef = UPChannel<DNSServiceRef, UPServiceRefDeleter>;
 
 class ZeroconfClient
 {
@@ -57,10 +57,11 @@ class ZeroconfClient
             IN char *pszServiceName);
 
     private:
+        unsigned int const _ukChannelSize = 1;
         // FIXME place these things in channels to make the ZeroconfClient
         // thread safe? That'd be pretty much every member in a channel.
-        UPChServiceRef _upchAddServiceRef;
-        UPChServiceRef _upchRemoveServiceRef;
+        UPCHServiceRef _upchAddServiceRef;
+        UPCHServiceRef _upchRemoveServiceRef;
         // FIXME add another service ref channel for deleting.
         gv_browse_callback _browseCallback;
         std::future<GV_ERROR> _futHandleEvents;
@@ -69,8 +70,8 @@ class ZeroconfClient
         std::map<std::string, DNSServiceRef> _mapOpenRegisterRefs;
 
         static GV_ERROR handleEvents(
-            IN UPChServiceRef const *pupchAddServiceRef,
-            IN UPChServiceRef const *pupchRemoveServiceRef);
+            IN UPCHServiceRef const *pupchAddServiceRef,
+            IN UPCHServiceRef const *pupchRemoveServiceRef);
         static void browseCallback(
             IN DNSServiceRef service,
             IN DNSServiceFlags flags,
@@ -83,6 +84,7 @@ class ZeroconfClient
 };
 
 using UPZeroconfClient = std::unique_ptr<ZeroconfClient>;
+using CHServiceRef = Channel<DNSServiceRef, UPServiceRefDeleter>;
 
 } // namespace grapevine
 

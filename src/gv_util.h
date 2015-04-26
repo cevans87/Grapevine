@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "gv_cpp14_compatibility.h"
+
 namespace grapevine {
 
 #ifndef GV_DEBUG_LEVEL
