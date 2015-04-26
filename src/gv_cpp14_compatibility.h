@@ -1,7 +1,7 @@
 #ifndef GRAPEVINE_SRC_GV_CPP14_COMPATIBILITY_H_
 #define GRAPEVINE_SRC_GV_CPP14_COMPATIBILITY_H_
 
-#ifdef GV_CPP14_COMPATIBILITY
+#if __cplusplus == 201103L
 
 #include <cstddef>
 #include <memory>
@@ -44,6 +44,6 @@ typename _Unique_if<T>::_Known_bound
 
 } // namespace std
 
-#endif // GV_CPP14_COMPATIBILITY
+#endif // __cplusplus == 201103L
 
 #endif // GRAPEVINE_SRC_GV_CPP14_COMPATIBILITY_H_
