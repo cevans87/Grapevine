@@ -56,14 +56,14 @@ char const * const gv_debug_strings[] =
 #define GV_DEBUG_PRINT(fmt, ...)
 #define GV_DEBUG_PRINT_SEV(severity, fmt, ...)
 #else
-#define __GV_FILE__ (strrchr(__FILE__, '/') ? \
+#define GV_FILE (strrchr(__FILE__, '/') ? \
         strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #define GV_DEBUG_PRINT_SEV(severity, fmt, ...)                              \
     do {                                                                    \
         if (GV_DEBUG_LEVEL <= (severity)) {                                 \
             fprintf(stderr, "%s:%d:%s(): %s: " fmt "\n",                    \
-                    __GV_FILE__, __LINE__,                                  \
+                    GV_FILE, __LINE__,                                      \
                     __func__, gv_debug_strings[(severity)], ##__VA_ARGS__); \
         }                                                                   \
     } while (0)

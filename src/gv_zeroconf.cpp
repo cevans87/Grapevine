@@ -115,7 +115,7 @@ ZeroconfClient::addRegisterCallback(
             reinterpret_cast<void *>(this)  // context
             );
     // FIXME handle serviceError
-    upServiceRef = UPServiceRef(new DNSServiceRef(serviceRef));
+    upServiceRef = make_unique<ServiceRef>(serviceRef);
     _mapOpenRegisterRefs.emplace(pszServiceName, serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
@@ -156,7 +156,7 @@ ZeroconfClient::addResolveCallback(
             reinterpret_cast<void *>(this)  // context
             );
     // FIXME handle serviceError
-    upServiceRef = UPServiceRef(new DNSServiceRef(serviceRef));
+    upServiceRef = make_unique<ServiceRef>(serviceRef);
     _mapOpenResolveRefs.emplace(pszServiceName, serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
@@ -188,7 +188,7 @@ ZeroconfClient::enableBrowse(
             reinterpret_cast<void *>(this)  // context
             );
     // FIXME handle serviceError
-    UPServiceRef upServiceRef(new DNSServiceRef(serviceRef));
+    UPServiceRef upServiceRef = make_unique<ServiceRef>(serviceRef);
     _vecOpenBrowseRefs.push_back(serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
@@ -239,7 +239,7 @@ ZeroconfClient::handleEvents(
                 error = (*pupchAddServiceRef)->get(&upServiceRef);
                 BAIL_ON_GV_ERROR(error);
 
-                int dnssdFd = DNSServiceRefSockFD(*upServiceRef);
+                int dnssdFd = DNSServiceRefSockFD(upServiceRef->ref);
                 //mapFdToServiceRef.emplace(dnssdFd, move(upServiceRef));
                 mapFdToServiceRef.insert(std::pair<int, UPServiceRef>(dnssdFd, move(upServiceRef)));
             }
@@ -248,7 +248,7 @@ ZeroconfClient::handleEvents(
                 error = (*pupchRemoveServiceRef)->get(&upServiceRef);
                 BAIL_ON_GV_ERROR(error);
 
-                int dnssdFd = DNSServiceRefSockFD(*upServiceRef);
+                int dnssdFd = DNSServiceRefSockFD(upServiceRef->ref);
                 mapFdToServiceRef.erase(dnssdFd);
             }
             for (pair<int const, UPServiceRef> const &fdToRef :
@@ -262,7 +262,7 @@ ZeroconfClient::handleEvents(
                     future<DNSServiceErrorType> handle = async(
                             launch::async,
                             DNSServiceProcessResult,
-                            *fdToRef.second);
+                            (fdToRef.second)->ref);
                     //DNSServiceProcessResult(*fdToRef.second);
 
                     // FIXME we block here on std::~future. Fix this.

@@ -51,7 +51,13 @@ endforeach()
 ##############################################################################
 
 set(GV_FLAGS "${GV_FLAGS} -fPIC")
-set(GV_FLAGS "${GV_FLAGS} --std=c++11")
+
+if (GV_STD STREQUAL "c++14")
+    set(GV_FLAGS "${GV_FLAGS} --std=c++14")
+else()
+    set(GV_FLAGS "${GV_FLAGS} --std=c++11")
+endif()
+
 if (GV_COMPILER STREQUAL "clang++")
     set(GV_FLAGS "${GV_FLAGS} --stdlib=libc++")
 endif()

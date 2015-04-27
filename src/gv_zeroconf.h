@@ -16,15 +16,19 @@ using gv_browse_callback = DNSServiceBrowseReply;
 using gv_resolve_callback = DNSServiceResolveReply;
 using gv_register_callback = DNSServiceRegisterReply;
 
-struct UPServiceRefDeleter {
-    void operator()(DNSServiceRef *serviceRef) {
-        DNSServiceRefDeallocate(*serviceRef);
-        delete serviceRef;
+struct ServiceRef {
+    DNSServiceRef ref;
+    ServiceRef() = delete;
+    ServiceRef(DNSServiceRef const serviceRef) {
+        ref = serviceRef;
+    }
+    ~ServiceRef() {
+        DNSServiceRefDeallocate(ref);
     }
 };
 
-using UPServiceRef = std::unique_ptr<DNSServiceRef, UPServiceRefDeleter>;
-using UPCHServiceRef = UPChannel<DNSServiceRef, UPServiceRefDeleter>;
+using UPServiceRef = std::unique_ptr<ServiceRef>;
+using UPCHServiceRef = UPChannel<ServiceRef>;
 
 class ZeroconfClient
 {
@@ -84,7 +88,7 @@ class ZeroconfClient
 };
 
 using UPZeroconfClient = std::unique_ptr<ZeroconfClient>;
-using CHServiceRef = Channel<DNSServiceRef, UPServiceRefDeleter>;
+using CHServiceRef = Channel<ServiceRef>;
 
 } // namespace grapevine
 
