@@ -7,7 +7,7 @@
 
 #include <dns_sd.h>
 
-#include "gv_type.h"
+#include "gv_util.h"
 #include "gv_channel.hpp"
 
 namespace grapevine {
@@ -39,25 +39,32 @@ class ZeroconfClient
         // Be aware that the browse callback may be called again very quickly,
         // possibly while the previous call is still running. The callback
         // should be prepared for this.
-        GV_ERROR setBrowseCallback(
+        GV_ERROR set_browse_callback(
             IN DNSServiceBrowseReply callback);
-        GV_ERROR enableBrowse();
-        GV_ERROR disableBrowse();
+        GV_ERROR enable_browse();
+        GV_ERROR disable_browse();
 
-        GV_ERROR addResolveCallback(
+        GV_ERROR add_resolve_callback(
             IN char const *pszServiceName,
             IN gv_resolve_callback callback);
-        GV_ERROR enableResolve(
+        GV_ERROR enable_resolve(
             IN char *pszServiceName);
-        GV_ERROR disableResolve(
+        GV_ERROR disable_resolve(
             IN char *pszServiceName);
 
-        GV_ERROR addRegisterCallback(
+        GV_ERROR add_register_callback(
+            IN DNSServiceFlags flags,
+            IN uint32_t uInterfaceIndex,
+            IN char const *pszDomainName,
+            IN char const *pszHostName,
             IN char const *pszServiceName,
+            IN uint16_t uPortNum,
+            IN unsigned char const *pTxtRecord,
+            IN uint16_t uTxtLen,
             IN gv_register_callback callback);
-        GV_ERROR enableRegister(
+        GV_ERROR enable_register(
             IN char *pszServiceName);
-        GV_ERROR disableRegister(
+        GV_ERROR disable_register(
             IN char *pszServiceName);
 
     private:
@@ -73,10 +80,10 @@ class ZeroconfClient
         std::map<std::string, DNSServiceRef> _mapOpenResolveRefs;
         std::map<std::string, DNSServiceRef> _mapOpenRegisterRefs;
 
-        static GV_ERROR handleEvents(
+        static GV_ERROR handle_events(
             IN UPCHServiceRef const *pupchAddServiceRef,
             IN UPCHServiceRef const *pupchRemoveServiceRef);
-        static void browseCallback(
+        static void browse_callback(
             IN DNSServiceRef service,
             IN DNSServiceFlags flags,
             IN uint32_t interfaceIndex,

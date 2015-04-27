@@ -3,7 +3,7 @@
 #include <chrono>
 #include <memory>
 
-#include "test_gv_channel.h"
+#include "gv_channel.hpp"
 #include "gtest/gtest.h"
 
 // TODO test select for channels.

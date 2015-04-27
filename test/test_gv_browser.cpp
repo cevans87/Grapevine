@@ -3,8 +3,6 @@
 #include <thread>
 #include "gtest/gtest.h"
 
-#include "test_gv_browser.h"
-
 //TEST(MyTest, FirstTest) {
 //    fprintf(stderr, "about to create GV_Browser\n");
 //    UP_GV_Browser upBrowser = UP_GV_Browser(new GV_Browser());

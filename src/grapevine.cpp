@@ -2,7 +2,6 @@
 #include <assert.h>
 #include <dns_sd.h>
 
-#include "gv_type.h"
 #include "gv_util.h"
 #include "grapevine.h"
 

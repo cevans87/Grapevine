@@ -28,7 +28,7 @@ ZeroconfClient::ZeroconfClient(
 
     _futHandleEvents = async(
             launch::async,
-            handleEvents,
+            handle_events,
             // FIXME I'd rather use a const rvalue here, but can't use that in
             // an async call. What's the right way to do this?
             &_upchAddServiceRef,
@@ -44,7 +44,7 @@ ZeroconfClient::~ZeroconfClient(
 }
 
 void
-ZeroconfClient::browseCallback(
+ZeroconfClient::browse_callback(
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
     IN DNSServiceRef service,
@@ -71,7 +71,7 @@ ZeroconfClient::browseCallback(
 
 // FIXME remove this function and just require it in the enableBrowse function.
 GV_ERROR
-ZeroconfClient::setBrowseCallback(
+ZeroconfClient::set_browse_callback(
     IN gv_browse_callback callback
 ) {
     _browseCallback = callback;
@@ -79,16 +79,22 @@ ZeroconfClient::setBrowseCallback(
 }
 
 GV_ERROR
-ZeroconfClient::addRegisterCallback(
+ZeroconfClient::add_register_callback(
+    // TODO Only support certain flags? Call them GV_REGISTER_FLAGS?
+    IN DNSServiceFlags flags,
+    IN uint32_t uInterfaceIndex,
+    IN char const *pszDomainName,
+    IN char const *pszHostName,
     IN char const *pszServiceName,
+    IN uint16_t uPortNum,
+    IN unsigned char const *pTxtRecord,
+    IN uint16_t uTxtLen,
     IN gv_register_callback callback
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
     UPServiceRef upServiceRef = nullptr;
-
-    // FIXME WE NEED to get a port and bind to it!
 
     if (_mapOpenRegisterRefs.find(pszServiceName) != _mapOpenRegisterRefs.end()) {
         error = GV_ERROR_KEY_CONFLICT;
@@ -97,20 +103,20 @@ ZeroconfClient::addRegisterCallback(
 
     serviceError = DNSServiceRegister(
             &serviceRef,                    // sdRef,
-            0,                              // flags,
+            flags,                          // flags,
             // TODO support passing kDNSServiceInterfaceIndexLocalOnly if we
             // set up our communicator for loopback instead of local network.
             // Might want to do this soon to make testing less obnoxious.
-            0,                              // interfaceIndex,
+            uInterfaceIndex,                // interfaceIndex,
             pszServiceName,                 // name,
             "_grapevine._tcp",              // regtype,
             // TODO Implement more than link-local
-            "local",                        // domain,
-            NULL,                           // host,
+            pszDomainName,                  // domain,
+            pszHostName,                    // host,
             // FIXME need to get a port!
-            0,                              // port,
-            0,                              // txtLen,
-            NULL,                           // txtRecord,
+            uPortNum,                       // port,
+            uTxtLen,                        // txtLen,
+            pTxtRecord,                     // txtRecord,
             callback,                       // callback,
             reinterpret_cast<void *>(this)  // context
             );
@@ -119,7 +125,6 @@ ZeroconfClient::addRegisterCallback(
     _mapOpenRegisterRefs.emplace(pszServiceName, serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
-    printf("Finished putting fd\n");
     BAIL_ON_GV_ERROR(error);
 out:
     return error;
@@ -130,7 +135,7 @@ error:
 
 
 GV_ERROR
-ZeroconfClient::addResolveCallback(
+ZeroconfClient::add_resolve_callback(
     IN char const *pszServiceName,
     IN gv_resolve_callback callback
 ) {
@@ -160,7 +165,6 @@ ZeroconfClient::addResolveCallback(
     _mapOpenResolveRefs.emplace(pszServiceName, serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
-    printf("Finished putting fd\n");
     BAIL_ON_GV_ERROR(error);
 out:
     return error;
@@ -170,13 +174,12 @@ error:
 }
 
 GV_ERROR
-ZeroconfClient::enableBrowse(
+ZeroconfClient::enable_browse(
 ) {
     GV_ERROR error = GV_ERROR_SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
 
-    GV_DEBUG_PRINT("About to call zeroconf browse");
     serviceError = DNSServiceBrowse(
             &serviceRef,                    // sdRef,
             0,                              // flags,
@@ -192,7 +195,6 @@ ZeroconfClient::enableBrowse(
     _vecOpenBrowseRefs.push_back(serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
-    printf("Finished putting fd\n");
     BAIL_ON_GV_ERROR(error);
 
 out:
@@ -203,7 +205,7 @@ error:
 }
 
 GV_ERROR
-ZeroconfClient::handleEvents(
+ZeroconfClient::handle_events(
     IN UPCHServiceRef const *pupchAddServiceRef,
     IN UPCHServiceRef const *pupchRemoveServiceRef
 ) {
@@ -217,9 +219,9 @@ ZeroconfClient::handleEvents(
     // Select on readFds until pupchAddServiceRef closes
     while (true) {
         error = (*pupchAddServiceRef)->get_notify_data_available_fd(&fdAddRef);
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
         error = (*pupchRemoveServiceRef)->get_notify_data_available_fd(&fdRemoveRef);
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_EXPECTED(error);
 
         FD_ZERO(&readFds);
         FD_SET(fdAddRef, &readFds);
@@ -237,7 +239,7 @@ ZeroconfClient::handleEvents(
                 // Something waiting on the channel.
                 UPServiceRef upServiceRef;
                 error = (*pupchAddServiceRef)->get(&upServiceRef);
-                BAIL_ON_GV_ERROR(error);
+                BAIL_ON_GV_ERROR_EXPECTED(error);
 
                 int dnssdFd = DNSServiceRefSockFD(upServiceRef->ref);
                 //mapFdToServiceRef.emplace(dnssdFd, move(upServiceRef));
@@ -263,7 +265,6 @@ ZeroconfClient::handleEvents(
                             launch::async,
                             DNSServiceProcessResult,
                             (fdToRef.second)->ref);
-                    //DNSServiceProcessResult(*fdToRef.second);
 
                     // FIXME we block here on std::~future. Fix this.
                 }
@@ -278,7 +279,7 @@ out:
     if (-1 != fdRemoveRef) {
         (*pupchRemoveServiceRef)->close_notify_data_available_fd(&fdRemoveRef);
     }
-    printf("returning from handler Thread\n");
+    GV_DEBUG_PRINT_SEV(GV_DEBUG_WARNING, "Returning from handler thread");
     return error;
 
 error:

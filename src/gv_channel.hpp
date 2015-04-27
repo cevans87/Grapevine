@@ -10,7 +10,6 @@
 #include <unistd.h> // pipes
 
 #include "gv_util.h"
-#include "gv_type.h"
 
 // TODO test "select" for channels
 // TODO implement RAII class for checkout/return of what's in channel?
@@ -435,7 +434,7 @@ Channel<T, D...>::get_notify_data_available_fd(
 
     if (_bClosed) {
         error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_WARNING(error);
     } else if (-1 != *pfdNotify) {
         // *pfdNotify already valid, unless caller forgot to set up correctly.
         *pfdNotify = *pfdNotify;
@@ -506,7 +505,7 @@ Channel<T, D...>::get_notify_space_available_fd(
 
     if (_bClosed) {
         error = GV_ERROR_CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR(error);
+        BAIL_ON_GV_ERROR_WARNING(error);
     } else if (-1 != *pfdNotify) {
         // *pfdNotify already valid, unless caller forgot to set up correctly.
         *pfdNotify = *pfdNotify;
