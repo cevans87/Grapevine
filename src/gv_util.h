@@ -21,18 +21,18 @@ namespace grapevine {
 #define GV_DEBUG_SYMBOL(symbol) symbol
 
 // All debug symbols defined here and only here.
-#define GV_DEBUG_SYMBOLS                                        \
-    GV_DEBUG_SYMBOL(GV_DEBUG_OFF),                              \
-    GV_DEBUG_SYMBOL(GV_DEBUG_EXPECTED),                         \
-    GV_DEBUG_SYMBOL(GV_DEBUG_INFO),                             \
-    GV_DEBUG_SYMBOL(GV_DEBUG_ENTRY),                            \
-    GV_DEBUG_SYMBOL(GV_DEBUG_WARNING),                          \
-    GV_DEBUG_SYMBOL(GV_DEBUG_DEBUG),                            \
-    GV_DEBUG_SYMBOL(GV_DEBUG_ERROR),                            \
-    GV_DEBUG_SYMBOL(GV_DEBUG_SEVERE),                           \
-    GV_DEBUG_SYMBOL(GV_NUM_DEBUG)           // KEEP IN LAST PLACE!
+#define GV_DEBUG_SYMBOLS                                                    \
+    GV_DEBUG_SYMBOL(OFF),                                                   \
+    GV_DEBUG_SYMBOL(EXPECTED),                                              \
+    GV_DEBUG_SYMBOL(INFO),                                                  \
+    GV_DEBUG_SYMBOL(ENTRY),                                                 \
+    GV_DEBUG_SYMBOL(WARNING),                                               \
+    GV_DEBUG_SYMBOL(DEBUG),                                                 \
+    GV_DEBUG_SYMBOL(ERROR),                                                 \
+    GV_DEBUG_SYMBOL(SEVERE),                                                \
+    GV_DEBUG_SYMBOL(GV_NUM_DEBUG)                       // KEEP IN LAST PLACE!
 
-enum GV_DEBUG : int
+enum class GV_DEBUG : int
 {
     GV_DEBUG_SYMBOLS
 };
@@ -57,20 +57,20 @@ char const * const gv_debug_strings[] =
 
 // All error symbols defined here and only here.
 #define GV_ERROR_SYMBOLS                                                    \
-    GV_ERROR_SYMBOL(GV_ERROR_SUCCESS),                                      \
-    GV_ERROR_SYMBOL(GV_ERROR_NOOP),                                         \
-    GV_ERROR_SYMBOL(GV_ERROR_LOCK_UNAVAILABLE),                             \
-    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_FULL),                                 \
-    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_EMPTY),                                \
-    GV_ERROR_SYMBOL(GV_ERROR_CHANNEL_CLOSED),                               \
-    GV_ERROR_SYMBOL(GV_ERROR_ALREADY_ENABLED),                              \
-    GV_ERROR_SYMBOL(GV_ERROR_ALREADY_DISABLED),                             \
-    GV_ERROR_SYMBOL(GV_ERROR_INVALID_ARG),                                  \
-    GV_ERROR_SYMBOL(GV_ERROR_KEY_CONFLICT),                                 \
-    GV_ERROR_SYMBOL(GV_ERROR_EMFILE),                                       \
-    GV_ERROR_SYMBOL(GV_NUM_ERRORS)                      // KEEP IN LAST PLACE!
+    GV_ERROR_SYMBOL(SUCCESS),                                               \
+    GV_ERROR_SYMBOL(NOOP),                                                  \
+    GV_ERROR_SYMBOL(LOCK_UNAVAILABLE),                                      \
+    GV_ERROR_SYMBOL(CHANNEL_FULL),                                          \
+    GV_ERROR_SYMBOL(CHANNEL_EMPTY),                                         \
+    GV_ERROR_SYMBOL(CHANNEL_CLOSED),                                        \
+    GV_ERROR_SYMBOL(ALREADY_ENABLED),                                       \
+    GV_ERROR_SYMBOL(ALREADY_DISABLED),                                      \
+    GV_ERROR_SYMBOL(INVALID_ARG),                                           \
+    GV_ERROR_SYMBOL(KEY_CONFLICT),                                          \
+    GV_ERROR_SYMBOL(NO_FD),                                                 \
+    GV_ERROR_SYMBOL(NUM_ERRORS)                         // KEEP IN LAST PLACE!
 
-enum GV_ERROR : int
+enum class GV_ERROR : int
 {
     GV_ERROR_SYMBOLS
 };
@@ -80,8 +80,7 @@ char const * const gv_error_strings[] = {NULL};
 #else
 // Redefine error symbol expansion for error code to string array definition.
 #undef GV_ERROR_SYMBOL
-#define GV_ERROR_SYMBOL(symbol) (strchr(strchr(#symbol, '_') + 1, '_') + 1)
-//#define GV_ERROR_SYMBOL(symbol) #symbol
+#define GV_ERROR_SYMBOL(symbol) #symbol
 
 char const * const gv_error_strings[] =
 {
@@ -99,40 +98,41 @@ char const * const gv_error_strings[] =
 
 #define GV_DEBUG_PRINT_SEV(severity, fmt, ...)                              \
     do {                                                                    \
-        if (GV_DEBUG_LEVEL <= (severity)) {                                 \
+        if (GV_DEBUG_LEVEL <= static_cast<int>(severity)) {                 \
             fprintf(stderr, "%s:%d:%s(): %s: " fmt "\n",                    \
-                    GV_FILE, __LINE__,                                      \
-                    __func__, gv_debug_strings[(severity)], ##__VA_ARGS__); \
+                    GV_FILE, __LINE__, __func__,                            \
+                    gv_debug_strings[static_cast<int>(severity)],           \
+                    ##__VA_ARGS__);                                         \
         }                                                                   \
     } while (0)
 
 #define GV_DEBUG_PRINT(fmt, ...)                                            \
-    GV_DEBUG_PRINT_SEV(GV_DEBUG_DEBUG, fmt, ##__VA_ARGS__)
+    GV_DEBUG_PRINT_SEV(GV_DEBUG::DEBUG, fmt, ##__VA_ARGS__)
 
 #endif // GV_DEBUG_LEVEL
 
 #define BAIL_ON_GV_ERROR_SEV(err, severity)                                 \
     do {                                                                    \
-        if (GV_ERROR_SUCCESS != (err)) {                                    \
-            if (GV_DEBUG_LEVEL >= severity) {                               \
+        if (GV_ERROR::SUCCESS != (err)) {                                   \
+            if (GV_DEBUG_LEVEL >= static_cast<int>(severity)) {             \
                 GV_DEBUG_PRINT_SEV(severity,                                \
                         "bail on error: %s",                                \
-                        gv_error_strings[(err)]);                           \
+                        gv_error_strings[static_cast<int>(err)]);           \
             }                                                               \
             goto error;                                                     \
         }                                                                   \
     } while (0)
 
 #define BAIL_ON_GV_ERROR_WARNING(err)                                       \
-    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG_WARNING)
+    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG::WARNING)
 
 // TODO rebuild this macro to allow for a list of expected errors and just keep
 // those from printing. Maybe call it BAIL_ON_GV_ERROR_HANDLED
 #define BAIL_ON_GV_ERROR_EXPECTED(err)                                      \
-    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG_EXPECTED)
+    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG::EXPECTED)
 
 #define BAIL_ON_GV_ERROR(err)                                               \
-    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG_DEBUG)
+    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG::DEBUG)
 
 } // namespace grapevine
 

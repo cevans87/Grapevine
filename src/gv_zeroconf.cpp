@@ -75,7 +75,7 @@ ZeroconfClient::set_browse_callback(
     IN gv_browse_callback callback
 ) {
     _browseCallback = callback;
-    return GV_ERROR_SUCCESS;
+    return GV_ERROR::SUCCESS;
 }
 
 GV_ERROR
@@ -91,13 +91,13 @@ ZeroconfClient::add_register_callback(
     IN uint16_t uTxtLen,
     IN gv_register_callback callback
 ) {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
     UPServiceRef upServiceRef = nullptr;
 
     if (_mapOpenRegisterRefs.find(pszServiceName) != _mapOpenRegisterRefs.end()) {
-        error = GV_ERROR_KEY_CONFLICT;
+        error = GV_ERROR::KEY_CONFLICT;
         BAIL_ON_GV_ERROR(error);
     }
 
@@ -139,13 +139,13 @@ ZeroconfClient::add_resolve_callback(
     IN char const *pszServiceName,
     IN gv_resolve_callback callback
 ) {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
     UPServiceRef upServiceRef = nullptr;
 
     if (_mapOpenResolveRefs.find(pszServiceName) != _mapOpenResolveRefs.end()) {
-        error = GV_ERROR_KEY_CONFLICT;
+        error = GV_ERROR::KEY_CONFLICT;
         BAIL_ON_GV_ERROR(error);
     }
 
@@ -176,7 +176,7 @@ error:
 GV_ERROR
 ZeroconfClient::enable_browse(
 ) {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
 
@@ -209,7 +209,7 @@ ZeroconfClient::handle_events(
     IN UPCHServiceRef const *pupchAddServiceRef,
     IN UPCHServiceRef const *pupchRemoveServiceRef
 ) {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     int fdAddRef = -1;
     int fdRemoveRef = -1;
     int maxFd;
@@ -279,7 +279,7 @@ out:
     if (-1 != fdRemoveRef) {
         (*pupchRemoveServiceRef)->close_notify_data_available_fd(&fdRemoveRef);
     }
-    GV_DEBUG_PRINT_SEV(GV_DEBUG_WARNING, "Returning from handler thread");
+    GV_DEBUG_PRINT_SEV(GV_DEBUG::WARNING, "Returning from handler thread");
     return error;
 
 error:

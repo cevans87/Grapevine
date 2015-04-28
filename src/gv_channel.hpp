@@ -86,7 +86,7 @@ class Channel {
         //      still be there when it's asked for. Selectors should not
         //      actually read from the pipe.
         // Returns SUCCESS, or CHANNEL_CLOSED if channel is already
-        //      closed, or EMFILE if a pipe could not be created.
+        //      closed, or NO_FD if a pipe could not be created.
         GV_ERROR get_notify_data_available_fd(
             INOUT int *pfdNotify);
 
@@ -99,7 +99,7 @@ class Channel {
         //      still be there when it's asked for. Selectors should not
         //      actually read from the pipe.
         // Returns SUCCESS, or CHANNEL_CLOSED if channel is already
-        //      closed, or EMFILE if a pipe could not be created.
+        //      closed, or NO_FD if a pipe could not be created.
         GV_ERROR get_notify_space_available_fd(
             INOUT int *pfdNotify);
 
@@ -168,11 +168,11 @@ GV_ERROR
 Channel<T, D...>::get(
     OUT std::unique_ptr<T, D...> *itemOut
 ) {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemOut) {
-        error = GV_ERROR_INVALID_ARG;
+        error = GV_ERROR::INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     } else if (0 < _qItems.size()) {
         // Just take the first item.
@@ -193,7 +193,7 @@ Channel<T, D...>::get(
         _qPutters.pop();
     } else if (_bClosed) {
         // Channel already closed
-        error = GV_ERROR_CHANNEL_CLOSED;
+        error = GV_ERROR::CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_EXPECTED(error);
     } else {
         // No getters waiting, no space. We have to block until a getter moves
@@ -215,7 +215,7 @@ Channel<T, D...>::get(
             transfer.cv.wait(lkTransfer);
         }
         if (nullptr == *itemOut && _bClosed) {
-            error = GV_ERROR_CHANNEL_CLOSED;
+            error = GV_ERROR::CHANNEL_CLOSED;
             BAIL_ON_GV_ERROR_EXPECTED(error);
         }
     }
@@ -234,23 +234,23 @@ GV_ERROR
 Channel<T, D...>::inc_notify_space_available(
 ) {
     ssize_t bytesRead;
+    char msg; // Don't care what's in here.
 
     for (std::pair<int, int> const &fds: _mapfdNotifyDataAvailable) {
         // Pull the msg out of the pipe.
-        char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
             // FIXME turn this into a severe error and bail.
-            GV_DEBUG_PRINT_SEV(GV_DEBUG_SEVERE,
+            GV_DEBUG_PRINT_SEV(GV_DEBUG::SEVERE,
                 "Bytes missing from SpaceAvailable notify pipe");
         }
     }
     for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
         // Let selectors know we made data available.
-        char msg; // Don't care what's in here.
+        // FIXME count the bytes written. We need to be sure we wrote 1.
         write(fds.second, &msg, sizeof(msg));
     }
-    return GV_ERROR_SUCCESS;
+    return GV_ERROR::SUCCESS;
 }
 
 template <typename T, typename... D>
@@ -258,23 +258,23 @@ GV_ERROR
 Channel<T, D...>::inc_notify_data_available(
 ) {
     ssize_t bytesRead;
+    char msg; // Don't care what's in here.
 
     for (std::pair<int, int> const &fds: _mapfdNotifySpaceAvailable) {
         // Pull the msg out of the pipe.
-        char msg; // Don't care what's in here.
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
             // FIXME turn this into a severe error and bail.
-            GV_DEBUG_PRINT_SEV(GV_DEBUG_SEVERE,
+            GV_DEBUG_PRINT_SEV(GV_DEBUG::SEVERE,
                 "Bytes missing from SpaceAvailable notify pipe");
         }
     }
     for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
         // Let selectors know we made data available.
-        char msg; // Don't care what's in here.
+        // FIXME count the bytes written. We need to be sure we wrote 1.
         write(fds.second, &msg, sizeof(msg));
     }
-    return GV_ERROR_SUCCESS;
+    return GV_ERROR::SUCCESS;
 }
 
 template <typename T, typename... D>
@@ -282,15 +282,15 @@ GV_ERROR
 Channel<T, D...>::put(
     IN std::unique_ptr<T, D...> *itemIn
 ) {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemIn) {
-        error = GV_ERROR_INVALID_ARG;
+        error = GV_ERROR::INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     } else if (_bClosed) {
         // Channel already closed
-        error = GV_ERROR_CHANNEL_CLOSED;
+        error = GV_ERROR::CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_EXPECTED(error);
     } else if (0 < _qGetters.size()) {
         // There are getters waiting. Give it directly to a getter.
@@ -320,7 +320,7 @@ Channel<T, D...>::put(
             transfer.cv.wait(lkTransfer);
         }
         if (nullptr != *itemIn && _bClosed) {
-            error = GV_ERROR_CHANNEL_CLOSED;
+            error = GV_ERROR::CHANNEL_CLOSED;
             BAIL_ON_GV_ERROR(error);
         }
     }
@@ -339,11 +339,11 @@ GV_ERROR
 Channel<T, D...>::get_nowait(
     OUT std::unique_ptr<T, D...> *itemOut
 ) {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemOut) {
-        error = GV_ERROR_INVALID_ARG;
+        error = GV_ERROR::INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     } else if (0 < _qItems.size()) {
         // Just take the first item.
@@ -364,10 +364,10 @@ Channel<T, D...>::get_nowait(
         _qPutters.pop();
     } else if (_bClosed) {
         // Channel already closed
-        error = GV_ERROR_CHANNEL_CLOSED;
+        error = GV_ERROR::CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_EXPECTED(error);
     } else {
-        error = GV_ERROR_CHANNEL_EMPTY;
+        error = GV_ERROR::CHANNEL_EMPTY;
         BAIL_ON_GV_ERROR_EXPECTED(error);
     }
 
@@ -386,15 +386,15 @@ Channel<T, D...>::put_nowait(
     IN std::unique_ptr<T, D...> *itemIn
     )
 {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
     if (nullptr == itemIn) {
-        error = GV_ERROR_INVALID_ARG;
+        error = GV_ERROR::INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     } else if (_bClosed) {
         // Channel already closed
-        error = GV_ERROR_CHANNEL_CLOSED;
+        error = GV_ERROR::CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_EXPECTED(error);
     } else if (0 < _qGetters.size()) {
         // There are getters waiting. Give it directly to a getter.
@@ -406,7 +406,7 @@ Channel<T, D...>::put_nowait(
         // No getters waiting, but space available in channel.
         _qItems.push(move(*itemIn));
     } else {
-        error = GV_ERROR_CHANNEL_FULL;
+        error = GV_ERROR::CHANNEL_FULL;
         BAIL_ON_GV_ERROR_EXPECTED(error);
     }
 
@@ -425,7 +425,7 @@ Channel<T, D...>::get_notify_data_available_fd(
     INOUT int *pfdNotify
     )
 {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     char msg; // Don't care what's in here.
     int pipeFd[2];
     unsigned int i;
@@ -433,7 +433,7 @@ Channel<T, D...>::get_notify_data_available_fd(
     std::lock_guard<std::mutex> lg(_mtx);
 
     if (_bClosed) {
-        error = GV_ERROR_CHANNEL_CLOSED;
+        error = GV_ERROR::CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_WARNING(error);
     } else if (-1 != *pfdNotify) {
         // *pfdNotify already valid, unless caller forgot to set up correctly.
@@ -450,7 +450,7 @@ Channel<T, D...>::get_notify_data_available_fd(
             write(pipeFd[1], &msg, sizeof(msg));
         }
     } else {
-        error = GV_ERROR_EMFILE;
+        error = GV_ERROR::NO_FD;
         BAIL_ON_GV_ERROR(error);
     }
 
@@ -467,14 +467,14 @@ Channel<T, D...>::close_notify_data_available_fd(
     INOUT int *pfdNotify
     )
 {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     std::map<int, int>::iterator loc;
     std::lock_guard<std::mutex> lg(_mtx);
 
     loc = _mapfdNotifyDataAvailable.find(*pfdNotify);
 
     if (_mapfdNotifyDataAvailable.end() == loc) {
-        error = GV_ERROR_INVALID_ARG;
+        error = GV_ERROR::INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     }
 
@@ -496,7 +496,7 @@ Channel<T, D...>::get_notify_space_available_fd(
     INOUT int *pfdNotify
     )
 {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     char msg;
     int pipeFd[2];
     unsigned int i;
@@ -504,7 +504,7 @@ Channel<T, D...>::get_notify_space_available_fd(
     std::lock_guard<std::mutex> lg(_mtx);
 
     if (_bClosed) {
-        error = GV_ERROR_CHANNEL_CLOSED;
+        error = GV_ERROR::CHANNEL_CLOSED;
         BAIL_ON_GV_ERROR_WARNING(error);
     } else if (-1 != *pfdNotify) {
         // *pfdNotify already valid, unless caller forgot to set up correctly.
@@ -518,7 +518,7 @@ Channel<T, D...>::get_notify_space_available_fd(
             write(pipeFd[1], &msg, sizeof(msg));
         }
     } else {
-        error = GV_ERROR_EMFILE;
+        error = GV_ERROR::NO_FD;
         BAIL_ON_GV_ERROR(error);
     }
 
@@ -535,14 +535,14 @@ Channel<T, D...>::close_notify_space_available_fd(
     INOUT int *pfdNotify
     )
 {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     std::map<int, int>::iterator loc;
     std::lock_guard<std::mutex> lg(_mtx);
 
     loc = _mapfdNotifySpaceAvailable.find(*pfdNotify);
 
     if (_mapfdNotifySpaceAvailable.end() == loc) {
-        error = GV_ERROR_INVALID_ARG;
+        error = GV_ERROR::INVALID_ARG;
         BAIL_ON_GV_ERROR(error);
     }
 
@@ -562,7 +562,7 @@ template <typename T, typename... D>
 GV_ERROR
 Channel<T, D...>::close()
 {
-    GV_ERROR error = GV_ERROR_SUCCESS;
+    GV_ERROR error = GV_ERROR::SUCCESS;
     char msg; // Don't care what's in here.
     std::lock_guard<std::mutex> lg(_mtx);
 

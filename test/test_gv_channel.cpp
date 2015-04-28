@@ -47,7 +47,7 @@ accumulator_getter(
     int ret = 0;
     std::unique_ptr<int> a;
 
-    while (gv::GV_ERROR_SUCCESS == pChan->get(&a)) {
+    while (gv::GV_ERROR::SUCCESS == pChan->get(&a)) {
         // FIXME ASSERT_NE(nullptr, a);
         ret += *a;
     }
@@ -69,11 +69,11 @@ nowait_getter(
 
     do {
         error = pChan->get_nowait(&a);
-        if (gv::GV_ERROR_SUCCESS == error) {
+        if (gv::GV_ERROR::SUCCESS == error) {
             // FIXME ASSERT_NE(nullptr, a);
             ret += *a;
         }
-    } while (gv::GV_ERROR_CHANNEL_CLOSED != error);
+    } while (gv::GV_ERROR::CHANNEL_CLOSED != error);
 
     return ret;
 }
@@ -95,7 +95,7 @@ nowait_putter(
         std::unique_ptr<int> a = std::unique_ptr<int>(new int(i));
         do {
             error = pChan->put_nowait(&a);
-        } while (gv::GV_ERROR_SUCCESS != error);
+        } while (gv::GV_ERROR::SUCCESS != error);
     }
 
     if (bClose) {
@@ -121,7 +121,7 @@ capacity_test(
 
         for (int i = 0; i < nItems; ++i) {
             error = chan.get(&a);
-            ASSERT_EQ(error, gv::GV_ERROR_SUCCESS);
+            ASSERT_EQ(error, gv::GV_ERROR::SUCCESS);
             ASSERT_NE(nullptr, a);
             ASSERT_EQ(i, *a);
             a = nullptr;
