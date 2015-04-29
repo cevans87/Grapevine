@@ -23,9 +23,9 @@ namespace grapevine {
 // All debug symbols defined here and only here.
 #define GV_DEBUG_SYMBOLS                                                    \
     GV_DEBUG_SYMBOL(OFF),                                                   \
-    GV_DEBUG_SYMBOL(EXPECTED),                                              \
     GV_DEBUG_SYMBOL(INFO),                                                  \
     GV_DEBUG_SYMBOL(ENTRY),                                                 \
+    GV_DEBUG_SYMBOL(EXPECTED),                                              \
     GV_DEBUG_SYMBOL(WARNING),                                               \
     GV_DEBUG_SYMBOL(DEBUG),                                                 \
     GV_DEBUG_SYMBOL(ERROR),                                                 \
@@ -42,7 +42,7 @@ char const * const gv_debug_strings[] = {NULL};
 #else
 // Redefine error symbol expansion for error code to string array definition.
 #undef GV_DEBUG_SYMBOL
-#define GV_DEBUG_SYMBOL(symbol) (strchr(strchr(#symbol, '_') + 1, '_') + 1)
+#define GV_DEBUG_SYMBOL(symbol) #symbol
 
 char const * const gv_debug_strings[] =
 {
