@@ -30,6 +30,7 @@ message("Using compiler ${CMAKE_CXX_COMPILER}")
 set(c-sources
         grapevine.cpp
         gv_zeroconf.cpp
+        gv_zmq.cpp
         )
 
 set(c-sources-test
@@ -184,6 +185,10 @@ add_definitions(
 ##############################################################################
 
 add_library(grapevine SHARED ${sources})
+
+# FIXME find libzmq dynamically
+target_link_libraries(grapevine
+    /usr/local/lib/libzmq.so)
 
 if (GV_BUILD STREQUAL "test")
     add_executable(test_grapevine ${sources-test})

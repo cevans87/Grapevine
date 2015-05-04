@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "gv_cpp14_make_unique.h"
+#include "gv_cpp14_compatibility.h"
 
 namespace grapevine {
 
@@ -68,6 +68,7 @@ char const * const gv_debug_strings[] =
     GV_ERROR_SYMBOL(INVALID_ARG),                                           \
     GV_ERROR_SYMBOL(KEY_CONFLICT),                                          \
     GV_ERROR_SYMBOL(NO_FD),                                                 \
+    GV_ERROR_SYMBOL(OSERROR),                                               \
     GV_ERROR_SYMBOL(NUM_ERRORS)                         // KEEP IN LAST PLACE!
 
 enum class GV_ERROR : int
