@@ -131,10 +131,12 @@ TEST(zeroconf, RegisterAndResolve) {
             50001, // uPortNum,
             nullptr, // pTxtRecord
             0, // uTxtLen,
-            register_cb); // callback
+            register_cb,
+            nullptr); // callback
     upZeroconfClient->add_resolve_callback(
             "happy",
-            resolve_cb);
+            resolve_cb,
+            nullptr);
     while (false == g_bOk[1]) {
         g_pcvTest->wait(lk);
     }

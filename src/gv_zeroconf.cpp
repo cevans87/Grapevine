@@ -11,7 +11,6 @@
 #include "gv_zeroconf.h"
 #include "gv_util.h"
 
-using std::unique_ptr;
 using std::pair;
 using std::map;
 using std::future;
@@ -89,7 +88,8 @@ ZeroconfClient::add_register_callback(
     IN uint16_t uPortNum,
     IN unsigned char const *pTxtRecord,
     IN uint16_t uTxtLen,
-    IN gv_register_callback callback
+    IN gv_register_callback callback,
+    IN void *context
 ) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
@@ -118,7 +118,7 @@ ZeroconfClient::add_register_callback(
             uTxtLen,                        // txtLen,
             pTxtRecord,                     // txtRecord,
             callback,                       // callback,
-            reinterpret_cast<void *>(this)  // context
+            context                         // context
             );
     // FIXME handle serviceError
     upServiceRef = make_unique<ServiceRef>(serviceRef);
@@ -137,7 +137,8 @@ error:
 GV_ERROR
 ZeroconfClient::add_resolve_callback(
     IN char const *pszServiceName,
-    IN gv_resolve_callback callback
+    IN gv_resolve_callback callback,
+    IN void *context
 ) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
@@ -158,7 +159,7 @@ ZeroconfClient::add_resolve_callback(
             // TODO Implement more than link-local
             "local",                        // domain,
             callback,                       // callback,
-            reinterpret_cast<void *>(this)  // context
+            context                         // context
             );
     // FIXME handle serviceError
     upServiceRef = make_unique<ServiceRef>(serviceRef);

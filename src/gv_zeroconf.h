@@ -46,7 +46,8 @@ class ZeroconfClient
 
         GV_ERROR add_resolve_callback(
             IN char const *pszServiceName,
-            IN gv_resolve_callback callback);
+            IN gv_resolve_callback callback,
+            IN void *context);
         GV_ERROR enable_resolve(
             IN char *pszServiceName);
         GV_ERROR disable_resolve(
@@ -61,7 +62,8 @@ class ZeroconfClient
             IN uint16_t uPortNum,
             IN unsigned char const *pTxtRecord,
             IN uint16_t uTxtLen,
-            IN gv_register_callback callback);
+            IN gv_register_callback callback,
+            IN void *context);
         GV_ERROR enable_register(
             IN char *pszServiceName);
         GV_ERROR disable_register(

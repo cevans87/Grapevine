@@ -143,7 +143,10 @@ endif()
 include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/src/
         ${CMAKE_CURRENT_SOURCE_DIR}/include/
-        ${CMAKE_CURRENT_SOURCE_DIR}/test/)
+        ${CMAKE_CURRENT_SOURCE_DIR}/test/
+        ${CMAKE_CURRENT_SOURCE_DIR}/cppzmq/
+        )
+
 if (GV_BUILD STREQUAL "test")
     include_directories(
             ${CMAKE_CURRENT_SOURCE_DIR}/test/)
@@ -185,10 +188,8 @@ add_definitions(
 ##############################################################################
 
 add_library(grapevine SHARED ${sources})
-
-# FIXME find libzmq dynamically
 target_link_libraries(grapevine
-    /usr/local/lib/libzmq.so)
+    zmq)
 
 if (GV_BUILD STREQUAL "test")
     add_executable(test_grapevine ${sources-test})
