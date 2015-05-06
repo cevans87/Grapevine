@@ -66,6 +66,7 @@ char const * const gv_debug_strings[] =
     GV_ERROR_SYMBOL(ALREADY_ENABLED),                                       \
     GV_ERROR_SYMBOL(ALREADY_DISABLED),                                      \
     GV_ERROR_SYMBOL(INVALID_ARG),                                           \
+    GV_ERROR_SYMBOL(KEY_MISSING),                                           \
     GV_ERROR_SYMBOL(KEY_CONFLICT),                                          \
     GV_ERROR_SYMBOL(NO_FD),                                                 \
     GV_ERROR_SYMBOL(OSERROR),                                               \

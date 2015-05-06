@@ -70,9 +70,14 @@ class ZMQClient
             IN uint16_t uTxtLen,
             IN unsigned char const *pszTxtRecord);
 
-        //GV_ERROR publish(
-        //    IN char const *pszName,
-        //    IN zmq_msg_t *pMsg);
+        GV_ERROR publish_message(
+            IN char const *pszPublisherName,
+            IN void *pMsg,
+            IN size_t msgLen);
+
+        GV_ERROR get_next_message(
+            IN char const *pszSubscriberName,
+            OUT zmq::message_t *msg);
 
         //GV_ERROR make_subscriber(
         //    IN char const *pszName);

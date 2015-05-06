@@ -384,8 +384,7 @@ template <typename T, typename... D>
 GV_ERROR
 Channel<T, D...>::put_nowait(
     IN std::unique_ptr<T, D...> *itemIn
-    )
-{
+) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     std::unique_lock<std::mutex> lkChannel(_mtx);
 
@@ -423,8 +422,7 @@ template <typename T, typename... D>
 GV_ERROR
 Channel<T, D...>::get_notify_data_available_fd(
     INOUT int *pfdNotify
-    )
-{
+) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     char msg; // Don't care what's in here.
     int pipeFd[2];
@@ -465,8 +463,7 @@ template <typename T, typename... D>
 GV_ERROR
 Channel<T, D...>::close_notify_data_available_fd(
     INOUT int *pfdNotify
-    )
-{
+) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     std::map<int, int>::iterator loc;
     std::lock_guard<std::mutex> lg(_mtx);
@@ -494,8 +491,7 @@ template <typename T, typename... D>
 GV_ERROR
 Channel<T, D...>::get_notify_space_available_fd(
     INOUT int *pfdNotify
-    )
-{
+) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     char msg;
     int pipeFd[2];
@@ -533,8 +529,7 @@ template <typename T, typename... D>
 GV_ERROR
 Channel<T, D...>::close_notify_space_available_fd(
     INOUT int *pfdNotify
-    )
-{
+) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     std::map<int, int>::iterator loc;
     std::lock_guard<std::mutex> lg(_mtx);
@@ -560,8 +555,8 @@ error:
 
 template <typename T, typename... D>
 GV_ERROR
-Channel<T, D...>::close()
-{
+Channel<T, D...>::close(
+) {
     GV_ERROR error = GV_ERROR::SUCCESS;
     char msg; // Don't care what's in here.
     std::lock_guard<std::mutex> lg(_mtx);

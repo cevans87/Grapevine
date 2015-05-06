@@ -130,12 +130,34 @@ ZMQClient::resolve_callback(
 #pragma clang diagnostic pop
 ) {
     lock_guard<mutex> lg(_mtx);
+    char serviceBuf[64];  // FIXME what is the actual limit on service name len?
+    char hostBuf[64]; // FIXME what is the actual limit on service name len?
+    char targetBuf[64]; // FIXME what is the actual limit on service name len?
+
+    size_t nBytes = strlen(pszServiceName) + 1;
+    // TODO check math
+    nBytes = (nBytes <= 64) ? nBytes : 64;
+
+    strncpy(serviceBuf, pszServiceName, nBytes);
+    *strchr(serviceBuf, '.') = '\0';
+
+    nBytes = strlen(pszHostName) + 1;
+    // TODO check math
+    nBytes = (nBytes <= 64) ? nBytes : 64;
+
+    strncpy(hostBuf, pszHostName, nBytes);
+    *strchr(hostBuf, '.') = '\0';
+
     GV_DEBUG_PRINT("Found a registered service %s at %s:%u",
             pszServiceName, pszHostName, ntohs(uPort));
+    GV_DEBUG_PRINT("Buf: %s", serviceBuf);
     // FIXME pszServiceName is <service>._grapevine._tcp.local. we just want
     // the <service> part. This won't work the way it is.
-    if (_mapSubscribers.end() != _mapSubscribers.find(pszServiceName)) {
-        GV_DEBUG_PRINT("Yay!");
+    if (_mapSubscribers.end() != _mapSubscribers.find(serviceBuf)) {
+        snprintf(targetBuf, sizeof(targetBuf) - 1, "tcp://%s:%d", hostBuf, ntohs(uPort));
+        GV_DEBUG_PRINT("connecting to %s", targetBuf);
+        _mapSubscribers.at(serviceBuf).upSubscriber->connect(targetBuf);
+        GV_DEBUG_PRINT("Finished connect");
         // FIXME Maybe set a variable saying the broadcaster for this
         // subscription exists?
         _cv.notify_all();
@@ -194,6 +216,52 @@ ZMQClient::make_subscriber(
 
 //error:
 //    goto out;
+}
+
+GV_ERROR
+ZMQClient::publish_message(
+    IN char const *pszPublisherName,
+    IN void *pMsg,
+    IN size_t msgLen
+) {
+    GV_ERROR error = GV_ERROR::SUCCESS;
+
+    if (_mapPublishers.end() == _mapPublishers.find(pszPublisherName)) {
+        error = GV_ERROR::KEY_MISSING;
+        BAIL_ON_GV_ERROR_SEV(error, GV_DEBUG::ERROR);
+    } else {
+        zmq::message_t msg(pMsg, msgLen, nullptr);
+        _mapPublishers.at(pszPublisherName).upPublisher->send(msg, 0);
+    }
+
+out:
+    return error;
+
+error:
+    goto out;
+}
+
+GV_ERROR
+ZMQClient::get_next_message(
+    IN char const *pszSubscriberName,
+    OUT zmq::message_t *pMsg
+) {
+    GV_ERROR error = GV_ERROR::SUCCESS;
+
+    if (_mapSubscribers.end() == _mapSubscribers.find(pszSubscriberName)) {
+        error = GV_ERROR::KEY_MISSING;
+        BAIL_ON_GV_ERROR_SEV(error, GV_DEBUG::ERROR);
+    } else {
+        _mapSubscribers.at(pszSubscriberName).upSubscriber->recv(pMsg, 0);
+        GV_DEBUG_PRINT("Got message %s", pMsg->data());
+    }
+
+
+out:
+    return error;
+
+error:
+    goto out;
 }
 
 } // namespace grapevine
