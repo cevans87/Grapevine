@@ -441,8 +441,7 @@ Channel<T, D...>::get_notify_data_available_fd(
     // we do, and we don't want to block.
     } else if (0 == pipe2(pipeFd, O_NONBLOCK)) {
         *pfdNotify = pipeFd[0];
-        _mapfdNotifyDataAvailable.insert(
-                std::pair<int, int>(pipeFd[0], pipeFd[1]));
+        _mapfdNotifyDataAvailable.emplace(pipeFd[0], pipeFd[1]);
 
         for (i = 0; i < _qItems.size(); ++i) {
             write(pipeFd[1], &msg, sizeof(msg));
@@ -507,8 +506,7 @@ Channel<T, D...>::get_notify_space_available_fd(
         *pfdNotify = *pfdNotify;
     } else if (0 == pipe2(pipeFd, O_NONBLOCK)) {
         *pfdNotify = pipeFd[0];
-        _mapfdNotifyDataAvailable.insert(
-                std::pair<int, int>(pipeFd[0], pipeFd[1]));
+        _mapfdNotifySpaceAvailable.emplace(pipeFd[0], pipeFd[1]);
 
         for (i = 0; i < _uCapacity - _qItems.size(); ++i) {
             write(pipeFd[1], &msg, sizeof(msg));
