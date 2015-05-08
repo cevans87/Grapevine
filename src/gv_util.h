@@ -23,9 +23,9 @@ namespace grapevine {
 // All debug symbols defined here and only here.
 #define GV_DEBUG_SYMBOLS                                                    \
     GV_DEBUG_SYMBOL(OFF),                                                   \
+    GV_DEBUG_SYMBOL(EXPECTED),                                              \
     GV_DEBUG_SYMBOL(INFO),                                                  \
     GV_DEBUG_SYMBOL(ENTRY),                                                 \
-    GV_DEBUG_SYMBOL(EXPECTED),                                              \
     GV_DEBUG_SYMBOL(WARNING),                                               \
     GV_DEBUG_SYMBOL(DEBUG),                                                 \
     GV_DEBUG_SYMBOL(ERROR),                                                 \
@@ -92,15 +92,30 @@ char const * const gv_error_strings[] =
 #endif // GV_DEBUG_LEVEL
 
 #if GV_DEBUG_LEVEL < 1
-#define GV_DEBUG_PRINT(fmt, ...)
+#define GV_PRINT(err, fmt, ...)
 #define GV_DEBUG_PRINT_SEV(severity, fmt, ...)
+#define GV_DEBUG_PRINT(fmt, ...)
 #else
+
 #define GV_FILE (strrchr(__FILE__, '/') ? \
         strrchr(__FILE__, '/') + 1 : __FILE__)
+
 
 #define GV_DEBUG_PRINT_SEV(severity, fmt, ...)                              \
     do {                                                                    \
         if (GV_DEBUG_LEVEL <= static_cast<int>(severity)) {                 \
+            fprintf(stderr, "%s:%d:%s(): %s: " fmt "\n",                    \
+                    GV_FILE, __LINE__, __func__,                            \
+                    gv_debug_strings[static_cast<int>(severity)],           \
+                    ##__VA_ARGS__);                                         \
+        }                                                                   \
+    } while (0)
+
+#define concat(a, b) a ## b
+#define GV_GET_DEBUG(severity) GV_ERROR get_ ##severity () {return GV_ERROR::severity;}
+#define GV_PRINT(severity, fmt, ...)                                        \
+    do {                                                                    \
+        if (GV_DEBUG_LEVEL <= static_cast<int>(GV_GET_DEBUG(severity)) {    \
             fprintf(stderr, "%s:%d:%s(): %s: " fmt "\n",                    \
                     GV_FILE, __LINE__, __func__,                            \
                     gv_debug_strings[static_cast<int>(severity)],           \

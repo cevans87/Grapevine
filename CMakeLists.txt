@@ -102,13 +102,13 @@ endif()
 
 if (GV_DEBUG_LEVEL STREQUAL "OFF")
     add_definitions(-DGV_DEBUG_LEVEL=0)
-elseif (GV_DEBUG_LEVEL STREQUAL "INFO")
+elseif (GV_DEBUG_LEVEL STREQUAL "EXPECTED")
     add_definitions(-g)
     add_definitions(-DGV_DEBUG_LEVEL=1)
-elseif (GV_DEBUG_LEVEL STREQUAL "ENTRY")
+elseif (GV_DEBUG_LEVEL STREQUAL "INFO")
     add_definitions(-g)
     add_definitions(-DGV_DEBUG_LEVEL=2)
-elseif (GV_DEBUG_LEVEL STREQUAL "EXPECTED")
+elseif (GV_DEBUG_LEVEL STREQUAL "ENTRY")
     add_definitions(-g)
     add_definitions(-DGV_DEBUG_LEVEL=3)
 elseif (GV_DEBUG_LEVEL STREQUAL "WARNING")
@@ -189,6 +189,7 @@ add_definitions(
 
 add_library(grapevine SHARED ${sources})
 target_link_libraries(grapevine
+    pthread
     zmq)
 
 if (GV_BUILD STREQUAL "test")
