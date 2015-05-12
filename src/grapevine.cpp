@@ -57,7 +57,7 @@ main(int argc, char *argv[])
 
     printf("%s\n", gv_error_strings[0]);
     printf("%i\n", GV_NUM_ERRORS);
-    BAIL_ON_GV_ERROR(error);
+    GV_BAIL(error, ERROR);
 
 out:
     return 0;

@@ -36,9 +36,7 @@ ZeroconfClient::ZeroconfClient(
 
 ZeroconfClient::~ZeroconfClient(
 ) {
-    GV_DEBUG_PRINT("Trying to die\n");
     GV_PRINT(DEBUG, "Trying to die\n");
-
 
     _upchAddServiceRef->close();
     _upchRemoveServiceRef->close();
@@ -59,13 +57,13 @@ ZeroconfClient::browse_callback(
 #pragma clang diagnostic pop
 ) {
     ZeroconfClient *self = reinterpret_cast<ZeroconfClient *>(context);
-    GV_DEBUG_PRINT("Browse callback initiated");
+    GV_PRINT(DEBUG, "Browse callback initiated");
     if (nullptr == self) {
-        GV_DEBUG_PRINT("No context given.");
+        GV_PRINT(DEBUG, "No context given.");
         return;
     }
     //else if (nullptr == self->_callback) {
-    //    GV_DEBUG_PRINT("No callback set.");
+    //    GV_PRINT(DEBUG, "No callback set.");
     //    return;
     //}
 }
@@ -100,7 +98,7 @@ ZeroconfClient::add_register_callback(
 
     if (_mapOpenRegisterRefs.find(pszServiceName) != _mapOpenRegisterRefs.end()) {
         error = GV_ERROR::KEY_CONFLICT;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     }
 
     serviceError = DNSServiceRegister(
@@ -127,7 +125,7 @@ ZeroconfClient::add_register_callback(
     _mapOpenRegisterRefs.emplace(pszServiceName, serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
-    BAIL_ON_GV_ERROR(error);
+    GV_BAIL(error, ERROR);
 out:
     return error;
 
@@ -149,7 +147,7 @@ ZeroconfClient::add_resolve_callback(
 
     if (_mapOpenResolveRefs.find(pszServiceName) != _mapOpenResolveRefs.end()) {
         error = GV_ERROR::KEY_CONFLICT;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     }
 
     serviceError = DNSServiceResolve(
@@ -168,7 +166,7 @@ ZeroconfClient::add_resolve_callback(
     _mapOpenResolveRefs.emplace(pszServiceName, serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
-    BAIL_ON_GV_ERROR(error);
+    GV_BAIL(error, ERROR);
 out:
     return error;
 
@@ -198,7 +196,7 @@ ZeroconfClient::enable_browse(
     _vecOpenBrowseRefs.push_back(serviceRef);
 
     error = _upchAddServiceRef->put(&upServiceRef);
-    BAIL_ON_GV_ERROR(error);
+    GV_BAIL(error, ERROR);
 
 out:
     return error;
@@ -222,9 +220,9 @@ ZeroconfClient::handle_events(
     // Select on readFds until pupchAddServiceRef closes
     while (true) {
         error = (*pupchAddServiceRef)->get_notify_data_available_fd(&fdAddRef);
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, EXPECTED);
         error = (*pupchRemoveServiceRef)->get_notify_data_available_fd(&fdRemoveRef);
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, EXPECTED);
 
         FD_ZERO(&readFds);
         FD_SET(fdAddRef, &readFds);
@@ -242,7 +240,7 @@ ZeroconfClient::handle_events(
                 // Something waiting on the channel.
                 UPServiceRef upServiceRef;
                 error = (*pupchAddServiceRef)->get(&upServiceRef);
-                BAIL_ON_GV_ERROR_EXPECTED(error);
+                GV_BAIL(error, EXPECTED);
 
                 int dnssdFd = DNSServiceRefSockFD(upServiceRef->ref);
                 //mapFdToServiceRef.emplace(dnssdFd, move(upServiceRef));
@@ -251,7 +249,7 @@ ZeroconfClient::handle_events(
             if (FD_ISSET(fdRemoveRef, &readFds)) {
                 UPServiceRef upServiceRef;
                 error = (*pupchRemoveServiceRef)->get(&upServiceRef);
-                BAIL_ON_GV_ERROR(error);
+                GV_BAIL(error, ERROR);
 
                 int dnssdFd = DNSServiceRefSockFD(upServiceRef->ref);
                 mapFdToServiceRef.erase(dnssdFd);
@@ -282,7 +280,7 @@ out:
     if (-1 != fdRemoveRef) {
         (*pupchRemoveServiceRef)->close_notify_data_available_fd(&fdRemoveRef);
     }
-    GV_DEBUG_PRINT_SEV(GV_DEBUG::WARNING, "Returning from handler thread");
+    GV_PRINT(WARNING, "Returning from handler thread");
     return error;
 
 error:

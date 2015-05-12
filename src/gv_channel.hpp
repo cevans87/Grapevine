@@ -173,7 +173,7 @@ Channel<T, D...>::get(
 
     if (nullptr == itemOut) {
         error = GV_ERROR::INVALID_ARG;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     } else if (0 < _qItems.size()) {
         // Just take the first item.
         *itemOut = move(_qItems.front());
@@ -194,7 +194,7 @@ Channel<T, D...>::get(
     } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR::CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, WARNING);
     } else {
         // No getters waiting, no space. We have to block until a getter moves
         // our item into the channel or takes it off our hands.
@@ -216,7 +216,7 @@ Channel<T, D...>::get(
         }
         if (nullptr == *itemOut && _bClosed) {
             error = GV_ERROR::CHANNEL_CLOSED;
-            BAIL_ON_GV_ERROR_EXPECTED(error);
+            GV_BAIL(error, WARNING);
         }
     }
 
@@ -241,8 +241,7 @@ Channel<T, D...>::inc_notify_space_available(
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
             // FIXME turn this into a severe error and bail.
-            GV_DEBUG_PRINT_SEV(GV_DEBUG::SEVERE,
-                "Bytes missing from SpaceAvailable notify pipe");
+            GV_PRINT(SEVERE, "Bytes missing from SpaceAvailable notify pipe");
         }
     }
     for (fdsRdWr &fds: _mapfdNotifySpaceAvailable) {
@@ -265,8 +264,7 @@ Channel<T, D...>::inc_notify_data_available(
         bytesRead = read(fds.first, &msg, sizeof(msg));
         if (0 == bytesRead) {
             // FIXME turn this into a severe error and bail.
-            GV_DEBUG_PRINT_SEV(GV_DEBUG::SEVERE,
-                "Bytes missing from SpaceAvailable notify pipe");
+            GV_PRINT(SEVERE, "Bytes missing from SpaceAvailable notify pipe");
         }
     }
     for (fdsRdWr &fds: _mapfdNotifyDataAvailable) {
@@ -287,11 +285,11 @@ Channel<T, D...>::put(
 
     if (nullptr == itemIn) {
         error = GV_ERROR::INVALID_ARG;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR::CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, WARNING);
     } else if (0 < _qGetters.size()) {
         // There are getters waiting. Give it directly to a getter.
         std::lock_guard<std::mutex> lg(_qGetters.front().mtx);
@@ -321,7 +319,7 @@ Channel<T, D...>::put(
         }
         if (nullptr != *itemIn && _bClosed) {
             error = GV_ERROR::CHANNEL_CLOSED;
-            BAIL_ON_GV_ERROR(error);
+            GV_BAIL(error, WARNING);
         }
     }
 
@@ -344,7 +342,7 @@ Channel<T, D...>::get_nowait(
 
     if (nullptr == itemOut) {
         error = GV_ERROR::INVALID_ARG;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     } else if (0 < _qItems.size()) {
         // Just take the first item.
         *itemOut = move(_qItems.front());
@@ -365,10 +363,10 @@ Channel<T, D...>::get_nowait(
     } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR::CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, WARNING);
     } else {
         error = GV_ERROR::CHANNEL_EMPTY;
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, EXPECTED);
     }
 
     inc_notify_space_available();
@@ -390,11 +388,11 @@ Channel<T, D...>::put_nowait(
 
     if (nullptr == itemIn) {
         error = GV_ERROR::INVALID_ARG;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     } else if (_bClosed) {
         // Channel already closed
         error = GV_ERROR::CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, WARNING);
     } else if (0 < _qGetters.size()) {
         // There are getters waiting. Give it directly to a getter.
         std::lock_guard<std::mutex> lg(_qGetters.front().mtx);
@@ -406,7 +404,7 @@ Channel<T, D...>::put_nowait(
         _qItems.push(move(*itemIn));
     } else {
         error = GV_ERROR::CHANNEL_FULL;
-        BAIL_ON_GV_ERROR_EXPECTED(error);
+        GV_BAIL(error, EXPECTED);
     }
 
     inc_notify_data_available();
@@ -432,7 +430,7 @@ Channel<T, D...>::get_notify_data_available_fd(
 
     if (_bClosed) {
         error = GV_ERROR::CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR_WARNING(error);
+        GV_BAIL(error, WARNING);
     } else if (-1 != *pfdNotify) {
         // *pfdNotify already valid, unless caller forgot to set up correctly.
         *pfdNotify = *pfdNotify;
@@ -448,7 +446,7 @@ Channel<T, D...>::get_notify_data_available_fd(
         }
     } else {
         error = GV_ERROR::NO_FD;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     }
 
 out:
@@ -471,7 +469,7 @@ Channel<T, D...>::close_notify_data_available_fd(
 
     if (_mapfdNotifyDataAvailable.end() == loc) {
         error = GV_ERROR::INVALID_ARG;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     }
 
     ::close(loc->first);
@@ -500,7 +498,7 @@ Channel<T, D...>::get_notify_space_available_fd(
 
     if (_bClosed) {
         error = GV_ERROR::CHANNEL_CLOSED;
-        BAIL_ON_GV_ERROR_WARNING(error);
+        GV_BAIL(error, WARNING);
     } else if (-1 != *pfdNotify) {
         // *pfdNotify already valid, unless caller forgot to set up correctly.
         *pfdNotify = *pfdNotify;
@@ -513,7 +511,7 @@ Channel<T, D...>::get_notify_space_available_fd(
         }
     } else {
         error = GV_ERROR::NO_FD;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     }
 
 out:
@@ -536,7 +534,7 @@ Channel<T, D...>::close_notify_space_available_fd(
 
     if (_mapfdNotifySpaceAvailable.end() == loc) {
         error = GV_ERROR::INVALID_ARG;
-        BAIL_ON_GV_ERROR(error);
+        GV_BAIL(error, ERROR);
     }
 
     ::close(loc->first);

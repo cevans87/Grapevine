@@ -93,63 +93,34 @@ char const * const gv_error_strings[] =
 
 #if GV_DEBUG_LEVEL < 1
 #define GV_PRINT(err, fmt, ...)
-#define GV_DEBUG_PRINT_SEV(severity, fmt, ...)
-#define GV_DEBUG_PRINT(fmt, ...)
 #else
 
 #define GV_FILE (strrchr(__FILE__, '/') ? \
         strrchr(__FILE__, '/') + 1 : __FILE__)
 
-
-#define GV_DEBUG_PRINT_SEV(severity, fmt, ...)                              \
-    do {                                                                    \
-        if (GV_DEBUG_LEVEL <= static_cast<int>(severity)) {                 \
-            fprintf(stderr, "%s:%d:%s(): %s: " fmt "\n",                    \
-                    GV_FILE, __LINE__, __func__,                            \
-                    gv_debug_strings[static_cast<int>(severity)],           \
-                    ##__VA_ARGS__);                                         \
-        }                                                                   \
-    } while (0)
-
-#define concat(a, b) a ## b
-#define GV_GET_DEBUG(severity) GV_ERROR get_ ##severity () {return GV_ERROR::severity;}
 #define GV_PRINT(severity, fmt, ...)                                        \
     do {                                                                    \
-        if (GV_DEBUG_LEVEL <= static_cast<int>(GV_GET_DEBUG(severity)) {    \
+        if (GV_DEBUG_LEVEL <= static_cast<int>(GV_DEBUG::severity)) {       \
             fprintf(stderr, "%s:%d:%s(): %s: " fmt "\n",                    \
                     GV_FILE, __LINE__, __func__,                            \
-                    gv_debug_strings[static_cast<int>(severity)],           \
+                    gv_debug_strings[static_cast<int>(GV_DEBUG::severity)], \
                     ##__VA_ARGS__);                                         \
         }                                                                   \
     } while (0)
-
-#define GV_DEBUG_PRINT(fmt, ...)                                            \
-    GV_DEBUG_PRINT_SEV(GV_DEBUG::DEBUG, fmt, ##__VA_ARGS__)
 
 #endif // GV_DEBUG_LEVEL
 
-#define BAIL_ON_GV_ERROR_SEV(err, severity)                                 \
+#define GV_BAIL(err, severity)                                              \
     do {                                                                    \
         if (GV_ERROR::SUCCESS != (err)) {                                   \
-            if (GV_DEBUG_LEVEL >= static_cast<int>(severity)) {             \
-                GV_DEBUG_PRINT_SEV(severity,                                \
+            if (GV_DEBUG_LEVEL >= static_cast<int>(GV_DEBUG::severity)) {   \
+                GV_PRINT(severity,                                          \
                         "bail on error: %s",                                \
                         gv_error_strings[static_cast<int>(err)]);           \
             }                                                               \
             goto error;                                                     \
         }                                                                   \
     } while (0)
-
-#define BAIL_ON_GV_ERROR_WARNING(err)                                       \
-    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG::WARNING)
-
-// TODO rebuild this macro to allow for a list of expected errors and just keep
-// those from printing. Maybe call it BAIL_ON_GV_ERROR_HANDLED
-#define BAIL_ON_GV_ERROR_EXPECTED(err)                                      \
-    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG::EXPECTED)
-
-#define BAIL_ON_GV_ERROR(err)                                               \
-    BAIL_ON_GV_ERROR_SEV(err, GV_DEBUG::DEBUG)
 
 } // namespace grapevine
 

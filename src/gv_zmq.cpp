@@ -63,7 +63,7 @@ ZMQClient::make_publisher(
 
     upPublisher->bind("tcp://*:*");
     upPublisher->getsockopt(ZMQ_LAST_ENDPOINT, static_cast<void *>(buf), &buflen);
-    GV_DEBUG_PRINT("got endpoint: %s", buf);
+    GV_PRINT(DEBUG, "got endpoint: %s", buf);
     pszPortNum = strrchr(buf, ':') + 1;
 
     gv_register_callback register_cb = [](
@@ -148,16 +148,16 @@ ZMQClient::resolve_callback(
     strncpy(hostBuf, pszHostName, nBytes);
     *strchr(hostBuf, '.') = '\0';
 
-    GV_DEBUG_PRINT("Found a registered service %s at %s:%u",
+    GV_PRINT(DEBUG, "Found a registered service %s at %s:%u",
             pszServiceName, pszHostName, ntohs(uPort));
-    GV_DEBUG_PRINT("Buf: %s", serviceBuf);
+    GV_PRINT(DEBUG, "Buf: %s", serviceBuf);
     // FIXME pszServiceName is <service>._grapevine._tcp.local. we just want
     // the <service> part. This won't work the way it is.
     if (_mapSubscribers.end() != _mapSubscribers.find(serviceBuf)) {
         snprintf(targetBuf, sizeof(targetBuf) - 1, "tcp://%s:%d", hostBuf, ntohs(uPort));
-        GV_DEBUG_PRINT("connecting to %s", targetBuf);
+        GV_PRINT(DEBUG, "connecting to %s", targetBuf);
         _mapSubscribers.at(serviceBuf).upSubscriber->connect(targetBuf);
-        GV_DEBUG_PRINT("Finished connect");
+        GV_PRINT(DEBUG, "Finished connect");
         // FIXME Maybe set a variable saying the broadcaster for this
         // subscription exists?
         _cv.notify_all();
@@ -228,7 +228,7 @@ ZMQClient::publish_message(
 
     if (_mapPublishers.end() == _mapPublishers.find(pszPublisherName)) {
         error = GV_ERROR::KEY_MISSING;
-        BAIL_ON_GV_ERROR_SEV(error, GV_DEBUG::ERROR);
+        GV_BAIL(error, ERROR);
     } else {
         zmq::message_t msg(pMsg, msgLen, nullptr);
         _mapPublishers.at(pszPublisherName).upPublisher->send(msg, 0);
@@ -250,10 +250,10 @@ ZMQClient::get_next_message(
 
     if (_mapSubscribers.end() == _mapSubscribers.find(pszSubscriberName)) {
         error = GV_ERROR::KEY_MISSING;
-        BAIL_ON_GV_ERROR_SEV(error, GV_DEBUG::ERROR);
+        GV_BAIL(error, ERROR);
     } else {
         _mapSubscribers.at(pszSubscriberName).upSubscriber->recv(pMsg, 0);
-        GV_DEBUG_PRINT("Got message %s", pMsg->data());
+        GV_PRINT(DEBUG, "Got message %s", pMsg->data());
     }
 
 
