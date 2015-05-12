@@ -192,7 +192,7 @@ Channel<T, D...>::get(
         _qPutters.front().cv.notify_one();
         _qPutters.pop();
     } else if (_bClosed) {
-        // Channel already closed
+        // Channel already closed.
         error = GV_ERROR::CHANNEL_CLOSED;
         GV_BAIL(error, WARNING);
     } else {

@@ -17,7 +17,7 @@ struct Publisher
     Publisher() = delete;
     Publisher(
         IN std::unique_ptr<zmq::socket_t> *pupPublisher
-    ) {
+    ) noexcept {
         upPublisher = move(*pupPublisher);
         bRegistered = false;
     }
@@ -28,10 +28,12 @@ struct Publisher
 struct Subscriber
 {
     std::unique_ptr<zmq::socket_t> upSubscriber;
+    bool bSubscribed;
+
     Subscriber() = delete;
     Subscriber(
         IN std::unique_ptr<zmq::socket_t> *pupSubscriber
-    ) {
+    ) noexcept {
         upSubscriber = move(*pupSubscriber);
     }
 };
@@ -39,17 +41,17 @@ struct Subscriber
 class ZMQClient
 {
     public:
-        ZMQClient();
+        ZMQClient() noexcept;
         explicit ZMQClient(
-            IN int iIOThreads);
+            IN int iIOThreads) noexcept;
 
         GV_ERROR make_publisher(
             IN ZeroconfClient &zeroconfClient,
-            IN char const *pszPublisherName);
+            IN char const *pszPublisherName) noexcept;
 
         GV_ERROR make_subscriber(
             IN ZeroconfClient &zeroconfClient,
-            IN char const *pszSubscriberName);
+            IN char const *pszSubscriberName) noexcept;
 
         void register_callback(
             IN DNSServiceRef serviceRef,
@@ -57,7 +59,7 @@ class ZMQClient
             IN DNSServiceErrorType errorCode,
             IN char const *pszServiceName,
             IN char const *pszRegType,
-            IN char const *pszDomainName);
+            IN char const *pszDomainName) noexcept;
 
         void resolve_callback(
             IN DNSServiceRef serviceRef,
@@ -68,16 +70,16 @@ class ZMQClient
             IN char const *pszHostName,
             IN uint16_t uPort,
             IN uint16_t uTxtLen,
-            IN unsigned char const *pszTxtRecord);
+            IN unsigned char const *pszTxtRecord) noexcept;
 
         GV_ERROR publish_message(
             IN char const *pszPublisherName,
             IN void *pMsg,
-            IN size_t msgLen);
+            IN size_t msgLen) noexcept;
 
         GV_ERROR get_next_message(
             IN char const *pszSubscriberName,
-            OUT zmq::message_t *msg);
+            OUT zmq::message_t *msg) noexcept;
 
         //GV_ERROR make_subscriber(
         //    IN char const *pszName);
@@ -97,7 +99,7 @@ class ZMQClient
         std::map<std::string, Subscriber> _mapSubscribers;
 
         GV_ERROR get_bind_string(
-            OUT std::unique_ptr<char> *pupszBindString);
+            OUT std::unique_ptr<char> *pupszBindString) noexcept;
 };
 
 } // namespace grapevine

@@ -17,7 +17,7 @@ using std::lock_guard;
 using zmq::socket_t;
 
 ZMQClient::ZMQClient(
-) :
+) noexcept :
     _context(1)
 {
     _bRegistered = false;
@@ -25,7 +25,7 @@ ZMQClient::ZMQClient(
 
 ZMQClient::ZMQClient(
     IN int iIOThreads
-) :
+) noexcept :
     _context(iIOThreads)
 {
     _bRegistered = false;
@@ -42,7 +42,7 @@ ZMQClient::register_callback(
             IN char const *pszRegType,
             IN char const *pszDomainName
 #pragma clang diagnostic pop
-) {
+) noexcept {
     lock_guard<mutex> lg(_mtx);
     if (_mapPublishers.end() != _mapPublishers.find(pszServiceName)) {
         _mapPublishers.at(pszServiceName).bRegistered = true;
@@ -54,7 +54,7 @@ GV_ERROR
 ZMQClient::make_publisher(
     IN ZeroconfClient &zeroconfClient,
     IN char const *pszPublisherName
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
     char buf[1024];
     size_t buflen = sizeof(buf);
@@ -128,21 +128,21 @@ ZMQClient::resolve_callback(
     IN uint16_t uTxtLen,
     IN unsigned char const *pszTxtRecord
 #pragma clang diagnostic pop
-) {
+) noexcept {
     lock_guard<mutex> lg(_mtx);
     char serviceBuf[64];  // FIXME what is the actual limit on service name len?
     char hostBuf[64]; // FIXME what is the actual limit on service name len?
     char targetBuf[64]; // FIXME what is the actual limit on service name len?
 
     size_t nBytes = strlen(pszServiceName) + 1;
-    // TODO check math
+    // FIXME Math is likely wrong. Buffer overflows await.
     nBytes = (nBytes <= 64) ? nBytes : 64;
 
     strncpy(serviceBuf, pszServiceName, nBytes);
     *strchr(serviceBuf, '.') = '\0';
 
     nBytes = strlen(pszHostName) + 1;
-    // TODO check math
+    // FIXME Math is likely wrong. Buffer overflows await.
     nBytes = (nBytes <= 64) ? nBytes : 64;
 
     strncpy(hostBuf, pszHostName, nBytes);
@@ -160,6 +160,7 @@ ZMQClient::resolve_callback(
         GV_PRINT(DEBUG, "Finished connect");
         // FIXME Maybe set a variable saying the broadcaster for this
         // subscription exists?
+        _mapSubscribers.at(serviceBuf).bSubscribed = true;
         _cv.notify_all();
     }
 }
@@ -168,7 +169,7 @@ GV_ERROR
 ZMQClient::make_subscriber(
     IN ZeroconfClient &zeroconfClient,
     IN char const *pszSubscriberName
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
     unique_ptr<socket_t> upSubscriber = make_unique<socket_t>(_context, ZMQ_SUB);
 
@@ -207,10 +208,6 @@ ZMQClient::make_subscriber(
 
     _mapSubscribers.emplace(pszSubscriberName, &upSubscriber);
 
-    //using std::this_thread::sleep_for;
-    //using std::chrono::seconds;
-    //sleep_for(seconds(10));
-
 //out:
     return error;
 
@@ -223,7 +220,7 @@ ZMQClient::publish_message(
     IN char const *pszPublisherName,
     IN void *pMsg,
     IN size_t msgLen
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
 
     if (_mapPublishers.end() == _mapPublishers.find(pszPublisherName)) {
@@ -231,6 +228,7 @@ ZMQClient::publish_message(
         GV_BAIL(error, ERROR);
     } else {
         zmq::message_t msg(pMsg, msgLen, nullptr);
+        // FIXME handle send errors.
         _mapPublishers.at(pszPublisherName).upPublisher->send(msg, 0);
     }
 
@@ -245,16 +243,26 @@ GV_ERROR
 ZMQClient::get_next_message(
     IN char const *pszSubscriberName,
     OUT zmq::message_t *pMsg
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
+    unique_lock<mutex> ul(_mtx);
+    bool done = false;
 
-    if (_mapSubscribers.end() == _mapSubscribers.find(pszSubscriberName)) {
-        error = GV_ERROR::KEY_MISSING;
-        GV_BAIL(error, ERROR);
-    } else {
-        _mapSubscribers.at(pszSubscriberName).upSubscriber->recv(pMsg, 0);
-        GV_PRINT(DEBUG, "Got message %s", pMsg->data());
-    }
+    do {
+        if (_mapSubscribers.end() == _mapSubscribers.find(pszSubscriberName)) {
+            error = GV_ERROR::KEY_MISSING;
+            GV_BAIL(error, ERROR);
+        } else if (false == _mapSubscribers.at(pszSubscriberName).bSubscribed) {
+            _cv.wait(ul);
+            GV_PRINT(DEBUG, "woken up for message");
+        } else {
+            GV_PRINT(DEBUG, "'%s' waiting for message", pszSubscriberName);
+            // FIXME, since we want to be able to reconnect elsewhere, we can't
+            // afford to let this call block.
+            done = _mapSubscribers.at(pszSubscriberName).upSubscriber->recv(pMsg, 0);
+            GV_PRINT(DEBUG, "Got message %s", pMsg->data());
+        }
+    } while (false == done);
 
 
 out:
