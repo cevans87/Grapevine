@@ -24,8 +24,9 @@ namespace grapevine {
 #define GV_DEBUG_SYMBOLS                                                    \
     GV_DEBUG_SYMBOL(OFF),                                                   \
     GV_DEBUG_SYMBOL(EXPECTED),                                              \
-    GV_DEBUG_SYMBOL(INFO),                                                  \
     GV_DEBUG_SYMBOL(ENTRY),                                                 \
+    GV_DEBUG_SYMBOL(EXIT),                                                  \
+    GV_DEBUG_SYMBOL(INFO),                                                  \
     GV_DEBUG_SYMBOL(WARNING),                                               \
     GV_DEBUG_SYMBOL(DEBUG),                                                 \
     GV_DEBUG_SYMBOL(ERROR),                                                 \
@@ -92,7 +93,7 @@ char const * const gv_error_strings[] =
 #endif // GV_DEBUG_LEVEL
 
 #if GV_DEBUG_LEVEL < 1
-#define GV_PRINT(err, fmt, ...)
+#define GV_PRINT(severity, fmt, ...)
 #else
 
 #define GV_FILE (strrchr(__FILE__, '/') ? \
@@ -114,8 +115,7 @@ char const * const gv_error_strings[] =
     do {                                                                    \
         if (GV_ERROR::SUCCESS != (err)) {                                   \
             if (GV_DEBUG_LEVEL >= static_cast<int>(GV_DEBUG::severity)) {   \
-                GV_PRINT(severity,                                          \
-                        "bail on error: %s",                                \
+                GV_PRINT(severity, "bailed on: %s",                         \
                         gv_error_strings[static_cast<int>(err)]);           \
             }                                                               \
             goto error;                                                     \

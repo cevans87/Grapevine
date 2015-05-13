@@ -16,6 +16,10 @@ using std::unique_lock;
 using std::lock_guard;
 using zmq::socket_t;
 
+static constexpr char const g_pszAddrFmt[] = "tcp://%s:%i";
+static constexpr unsigned long const g_ulMaxAddrLen = kDNSServiceMaxDomainName +
+        sizeof(g_pszAddrFmt) - 4 + 5; // subtract 4 fmt chars, add 5 portnum chars.
+
 ZMQClient::ZMQClient(
 ) noexcept :
     _context(1)
@@ -63,7 +67,7 @@ ZMQClient::make_publisher(
 
     upPublisher->bind("tcp://*:*");
     upPublisher->getsockopt(ZMQ_LAST_ENDPOINT, static_cast<void *>(buf), &buflen);
-    GV_PRINT(DEBUG, "got endpoint: %s", buf);
+    GV_PRINT(INFO, "got endpoint: %s", buf);
     pszPortNum = strrchr(buf, ':') + 1;
 
     gv_register_callback register_cb = [](
@@ -130,36 +134,20 @@ ZMQClient::resolve_callback(
 #pragma clang diagnostic pop
 ) noexcept {
     lock_guard<mutex> lg(_mtx);
-    char serviceBuf[64];  // FIXME what is the actual limit on service name len?
-    char hostBuf[64]; // FIXME what is the actual limit on service name len?
-    char targetBuf[64]; // FIXME what is the actual limit on service name len?
+    char serviceBuf[kDNSServiceMaxServiceName]; // Includes space for '\0'
+    char addressBuf[g_ulMaxAddrLen];
 
-    size_t nBytes = strlen(pszServiceName) + 1;
-    // FIXME Math is likely wrong. Buffer overflows await.
-    nBytes = (nBytes <= 64) ? nBytes : 64;
+    snprintf(serviceBuf, sizeof(serviceBuf), "%s", pszServiceName);
+    *strchrnul(serviceBuf, '.') = '\0';
 
-    strncpy(serviceBuf, pszServiceName, nBytes);
-    *strchr(serviceBuf, '.') = '\0';
-
-    nBytes = strlen(pszHostName) + 1;
-    // FIXME Math is likely wrong. Buffer overflows await.
-    nBytes = (nBytes <= 64) ? nBytes : 64;
-
-    strncpy(hostBuf, pszHostName, nBytes);
-    *strchr(hostBuf, '.') = '\0';
-
-    GV_PRINT(DEBUG, "Found a registered service %s at %s:%u",
+    GV_PRINT(INFO, "Found a registered service %s at %s:%u",
             pszServiceName, pszHostName, ntohs(uPort));
-    GV_PRINT(DEBUG, "Buf: %s", serviceBuf);
-    // FIXME pszServiceName is <service>._grapevine._tcp.local. we just want
-    // the <service> part. This won't work the way it is.
+    GV_PRINT(INFO, "Buf: %s", serviceBuf);
     if (_mapSubscribers.end() != _mapSubscribers.find(serviceBuf)) {
-        snprintf(targetBuf, sizeof(targetBuf) - 1, "tcp://%s:%d", hostBuf, ntohs(uPort));
-        GV_PRINT(DEBUG, "connecting to %s", targetBuf);
-        _mapSubscribers.at(serviceBuf).upSubscriber->connect(targetBuf);
-        GV_PRINT(DEBUG, "Finished connect");
-        // FIXME Maybe set a variable saying the broadcaster for this
-        // subscription exists?
+        snprintf(addressBuf, sizeof(addressBuf), g_pszAddrFmt, pszHostName, ntohs(uPort));
+        GV_PRINT(INFO, "connecting to %s", addressBuf);
+        _mapSubscribers.at(serviceBuf).upSubscriber->connect(addressBuf);
+        _mapSubscribers.at(serviceBuf).upSubscriber->setsockopt(ZMQ_SUBSCRIBE, nullptr, 0);
         _mapSubscribers.at(serviceBuf).bSubscribed = true;
         _cv.notify_all();
     }
@@ -254,13 +242,11 @@ ZMQClient::get_next_message(
             GV_BAIL(error, ERROR);
         } else if (false == _mapSubscribers.at(pszSubscriberName).bSubscribed) {
             _cv.wait(ul);
-            GV_PRINT(DEBUG, "woken up for message");
         } else {
-            GV_PRINT(DEBUG, "'%s' waiting for message", pszSubscriberName);
             // FIXME, since we want to be able to reconnect elsewhere, we can't
-            // afford to let this call block.
+            // afford to let this call block. Find a good way to interrupt the recv?
             done = _mapSubscribers.at(pszSubscriberName).upSubscriber->recv(pMsg, 0);
-            GV_PRINT(DEBUG, "Got message %s", pMsg->data());
+            GV_PRINT(INFO, "Got message %s", pMsg->data());
         }
     } while (false == done);
 

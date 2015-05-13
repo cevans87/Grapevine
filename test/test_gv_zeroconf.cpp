@@ -26,15 +26,14 @@ using std::chrono::seconds;
 
 static mutex *g_pmtxTest = nullptr;
 static condition_variable *g_pcvTest = nullptr;
-static bool g_bOk[2] = {false, false};
+static bool g_bOk = false;
 
 namespace gv = grapevine;
 
 using std::make_unique;
 
 TEST(zeroconf, browser) {
-    g_bOk[0] = false;
-    g_bOk[1] = false;
+    g_bOk = false;
     if (nullptr == g_pmtxTest) {
         g_pmtxTest = new mutex();
     }
@@ -62,21 +61,20 @@ TEST(zeroconf, browser) {
         if (false == ul.try_lock()) {
             return;
         }
-        g_bOk[0] = true;
+        g_bOk = true;
         g_pcvTest->notify_all();
     };
     gv::UPZeroconfClient upZeroconfClient = make_unique<gv::ZeroconfClient>();
     upZeroconfClient->set_browse_callback(cb);
     upZeroconfClient->enable_browse();
-    while (false == g_bOk[0]) {
+    while (false == g_bOk) {
         g_pcvTest->wait(lk);
     }
     EXPECT_EQ(1, 1);
 }
 
 TEST(zeroconf, RegisterAndResolve) {
-    g_bOk[0] = false;
-    g_bOk[1] = false;
+    g_bOk = false;
     if (nullptr == g_pmtxTest) {
         g_pmtxTest = new mutex();
     }
@@ -99,7 +97,6 @@ TEST(zeroconf, RegisterAndResolve) {
 #pragma clang diagnostic pop
     {
         lock_guard<mutex> lg(*g_pmtxTest);
-        g_bOk[0] = true;
     };
 
     DNSServiceResolveReply resolve_cb = [](
@@ -118,7 +115,7 @@ TEST(zeroconf, RegisterAndResolve) {
 #pragma clang diagnostic pop
     {
         lock_guard<mutex> lg(*g_pmtxTest);
-        g_bOk[1] = true;
+        g_bOk = true;
         g_pcvTest->notify_all();
     };
     gv::UPZeroconfClient upZeroconfClient = make_unique<gv::ZeroconfClient>();
@@ -137,7 +134,7 @@ TEST(zeroconf, RegisterAndResolve) {
             "happy",
             resolve_cb,
             nullptr);
-    while (false == g_bOk[1]) {
+    while (false == g_bOk) {
         g_pcvTest->wait(lk);
     }
     EXPECT_EQ(1, 1);
