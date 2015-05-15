@@ -20,7 +20,7 @@ using std::make_unique;
 namespace grapevine {
 
 ZeroconfClient::ZeroconfClient(
-) {
+) noexcept {
     _upchAddServiceRef = make_unique<CHServiceRef>(_ukChannelSize);
 
     _upchRemoveServiceRef = make_unique<CHServiceRef>(_ukChannelSize);
@@ -35,8 +35,8 @@ ZeroconfClient::ZeroconfClient(
 }
 
 ZeroconfClient::~ZeroconfClient(
-) {
-    GV_PRINT(DEBUG, "Trying to die\n");
+) noexcept {
+    GV_PRINT(INFO, "Trying to die\n");
 
     _upchAddServiceRef->close();
     _upchRemoveServiceRef->close();
@@ -55,15 +55,15 @@ ZeroconfClient::browse_callback(
     IN const char *domain,
     IN void *context
 #pragma clang diagnostic pop
-) {
+) noexcept {
     ZeroconfClient *self = reinterpret_cast<ZeroconfClient *>(context);
-    GV_PRINT(DEBUG, "Browse callback initiated");
+    GV_PRINT(INFO, "Browse callback initiated");
     if (nullptr == self) {
-        GV_PRINT(DEBUG, "No context given.");
+        GV_PRINT(INFO, "No context given.");
         return;
     }
     //else if (nullptr == self->_callback) {
-    //    GV_PRINT(DEBUG, "No callback set.");
+    //    GV_PRINT(INFO, "No callback set.");
     //    return;
     //}
 }
@@ -72,7 +72,7 @@ ZeroconfClient::browse_callback(
 GV_ERROR
 ZeroconfClient::set_browse_callback(
     IN gv_browse_callback callback
-) {
+) noexcept {
     _browseCallback = callback;
     return GV_ERROR::SUCCESS;
 }
@@ -90,7 +90,7 @@ ZeroconfClient::add_register_callback(
     IN uint16_t uTxtLen,
     IN gv_register_callback callback,
     IN void *context
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
@@ -113,7 +113,6 @@ ZeroconfClient::add_register_callback(
             // TODO Implement more than link-local
             pszDomainName,                  // domain,
             pszHostName,                    // host,
-            // FIXME need to get a port!
             uPortNum,                       // port,
             uTxtLen,                        // txtLen,
             pTxtRecord,                     // txtRecord,
@@ -139,7 +138,7 @@ ZeroconfClient::add_resolve_callback(
     IN char const *pszServiceName,
     IN gv_resolve_callback callback,
     IN void *context
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
@@ -176,7 +175,7 @@ error:
 
 GV_ERROR
 ZeroconfClient::enable_browse(
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
@@ -209,7 +208,7 @@ GV_ERROR
 ZeroconfClient::handle_events(
     IN UPCHServiceRef const *pupchAddServiceRef,
     IN UPCHServiceRef const *pupchRemoveServiceRef
-) {
+) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
     int fdAddRef = -1;
     int fdRemoveRef = -1;
@@ -244,7 +243,8 @@ ZeroconfClient::handle_events(
 
                 int dnssdFd = DNSServiceRefSockFD(upServiceRef->ref);
                 //mapFdToServiceRef.emplace(dnssdFd, move(upServiceRef));
-                mapFdToServiceRef.insert(std::pair<int, UPServiceRef>(dnssdFd, move(upServiceRef)));
+                mapFdToServiceRef.insert(std::pair<int, UPServiceRef>(
+                        dnssdFd, move(upServiceRef)));
             }
             if (FD_ISSET(fdRemoveRef, &readFds)) {
                 UPServiceRef upServiceRef;
