@@ -33,25 +33,25 @@ using UPCHServiceRef = UPChannel<ServiceRef>;
 class ZeroconfClient
 {
     public:
-        ZeroconfClient();
-        ~ZeroconfClient();
+        ZeroconfClient() noexcept;
+        ~ZeroconfClient() noexcept;
 
         // Be aware that the browse callback may be called again very quickly,
         // possibly while the previous call is still running. The callback
         // should be prepared for this.
         GV_ERROR set_browse_callback(
-            IN DNSServiceBrowseReply callback);
-        GV_ERROR enable_browse();
-        GV_ERROR disable_browse();
+            IN DNSServiceBrowseReply callback) noexcept;
+        GV_ERROR enable_browse() noexcept;
+        GV_ERROR disable_browse() noexcept;
 
         GV_ERROR add_resolve_callback(
             IN char const *pszServiceName,
             IN gv_resolve_callback callback,
-            IN void *context);
+            IN void *context) noexcept;
         GV_ERROR enable_resolve(
-            IN char *pszServiceName);
+            IN char *pszServiceName) noexcept;
         GV_ERROR disable_resolve(
-            IN char *pszServiceName);
+            IN char *pszServiceName) noexcept;
 
         GV_ERROR add_register_callback(
             IN DNSServiceFlags flags,
@@ -63,11 +63,11 @@ class ZeroconfClient
             IN unsigned char const *pTxtRecord,
             IN uint16_t uTxtLen,
             IN gv_register_callback callback,
-            IN void *context);
+            IN void *context) noexcept;
         GV_ERROR enable_register(
-            IN char *pszServiceName);
+            IN char *pszServiceName) noexcept;
         GV_ERROR disable_register(
-            IN char *pszServiceName);
+            IN char *pszServiceName) noexcept;
 
     private:
         unsigned int const _ukChannelSize = 1;
@@ -84,7 +84,7 @@ class ZeroconfClient
 
         static GV_ERROR handle_events(
             IN UPCHServiceRef const *pupchAddServiceRef,
-            IN UPCHServiceRef const *pupchRemoveServiceRef);
+            IN UPCHServiceRef const *pupchRemoveServiceRef) noexcept;
         static void browse_callback(
             IN DNSServiceRef service,
             IN DNSServiceFlags flags,
@@ -93,7 +93,7 @@ class ZeroconfClient
             IN const char *name,
             IN const char *type,
             IN const char *domain,
-            IN void *context);
+            IN void *context) noexcept;
 };
 
 using UPZeroconfClient = std::unique_ptr<ZeroconfClient>;
