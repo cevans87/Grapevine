@@ -36,7 +36,7 @@ ZeroconfClient::ZeroconfClient(
 
 ZeroconfClient::~ZeroconfClient(
 ) {
-    GV_PRINT(DEBUG, "Trying to die\n");
+    GV_PRINT(ENTRY, "Trying to die\n");
 
     _upchAddServiceRef->close();
     _upchRemoveServiceRef->close();

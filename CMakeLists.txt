@@ -31,13 +31,15 @@ set(c-sources
         grapevine.cpp
         gv_zeroconf.cpp
         gv_zmq.cpp
+        gv_communicator.cpp
         )
 
 set(c-sources-test
         gv_test.cpp
         test_gv_zeroconf.cpp
         test_gv_channel.cpp
-        test_gv_zmq.cpp)
+        test_gv_zmq.cpp
+        test_gv_communicator.cpp)
 
 foreach(source ${c-sources})
     list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/src/${source})

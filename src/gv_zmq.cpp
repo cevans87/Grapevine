@@ -48,7 +48,9 @@ ZMQClient::register_callback(
 #pragma clang diagnostic pop
 ) noexcept {
     lock_guard<mutex> lg(_mtx);
+    GV_PRINT(INFO, "In register cb");
     if (_mapPublishers.end() != _mapPublishers.find(pszServiceName)) {
+        GV_PRINT(INFO, "Publisher exists");
         _mapPublishers.at(pszServiceName).bRegistered = true;
         _cv.notify_all();
     }
@@ -60,15 +62,18 @@ ZMQClient::make_publisher(
     IN char const *pszPublisherName
 ) noexcept {
     GV_ERROR error = GV_ERROR::SUCCESS;
-    char buf[1024];
-    size_t buflen = sizeof(buf);
+    char bufEndpoint[1024];
+    size_t bufEndpointlen = sizeof(bufEndpoint);
     char *pszPortNum;
     unique_ptr<socket_t> upPublisher = make_unique<socket_t>(_context, ZMQ_PUB);
 
     upPublisher->bind("tcp://*:*");
-    upPublisher->getsockopt(ZMQ_LAST_ENDPOINT, static_cast<void *>(buf), &buflen);
-    GV_PRINT(INFO, "got endpoint: %s", buf);
-    pszPortNum = strrchr(buf, ':') + 1;
+    upPublisher->getsockopt(
+            ZMQ_LAST_ENDPOINT, static_cast<void *>(bufEndpoint), &bufEndpointlen);
+    // XXX if bind fails, does getsockopt also fail? It'd make the strrchr fail
+    // too.
+    GV_PRINT(INFO, "got endpoint: %s", bufEndpoint);
+    pszPortNum = strrchr(bufEndpoint, ':') + 1;
 
     gv_register_callback register_cb = [](
 #pragma clang diagnostic push
@@ -189,6 +194,8 @@ ZMQClient::make_subscriber(
     };
 
     lock_guard<mutex> lg(_mtx);
+    GV_PRINT(INFO, "Adding subscriber's resolve callback for '%s'",
+            pszSubscriberName);
     zeroconfClient.add_resolve_callback(
             pszSubscriberName, // pszServiceName,
             resolve_cb, // callback
@@ -241,6 +248,8 @@ ZMQClient::get_next_message(
             error = GV_ERROR::KEY_MISSING;
             GV_BAIL(error, ERROR);
         } else if (false == _mapSubscribers.at(pszSubscriberName).bSubscribed) {
+            GV_PRINT(INFO, "Subscribe to '%s' not completed, waiting",
+                    pszSubscriberName);
             _cv.wait(ul);
         } else {
             // FIXME, since we want to be able to reconnect elsewhere, we can't

@@ -79,13 +79,7 @@ class ZMQClient
 
         GV_ERROR get_next_message(
             IN char const *pszSubscriberName,
-            OUT zmq::message_t *msg) noexcept;
-
-        //GV_ERROR make_subscriber(
-        //    IN char const *pszName);
-        //GV_ERROR get_last_broadcast(
-        //    IN char const *pszName,
-        //    OUT zmq_msg_t *pMsg);
+            OUT zmq::message_t *pMsg) noexcept;
 
     private:
         std::mutex _mtx;
