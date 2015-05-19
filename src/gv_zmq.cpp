@@ -24,7 +24,9 @@ ZMQClient::ZMQClient(
 ) noexcept :
     _context(1)
 {
+    GV_PRINT(ENTRY, "");
     _bRegistered = false;
+    GV_PRINT(EXIT, "");
 }
 
 ZMQClient::ZMQClient(
@@ -32,7 +34,9 @@ ZMQClient::ZMQClient(
 ) noexcept :
     _context(iIOThreads)
 {
+    GV_PRINT(ENTRY, "");
     _bRegistered = false;
+    GV_PRINT(EXIT, "");
 }
 
 void
@@ -47,6 +51,7 @@ ZMQClient::register_callback(
             IN char const *pszDomainName
 #pragma clang diagnostic pop
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     lock_guard<mutex> lg(_mtx);
     GV_PRINT(INFO, "In register cb");
     if (_mapPublishers.end() != _mapPublishers.find(pszServiceName)) {
@@ -54,6 +59,7 @@ ZMQClient::register_callback(
         _mapPublishers.at(pszServiceName).bRegistered = true;
         _cv.notify_all();
     }
+    GV_PRINT(EXIT, "");
 }
 
 GV_ERROR
@@ -61,6 +67,7 @@ ZMQClient::make_publisher(
     IN ZeroconfClient &zeroconfClient,
     IN char const *pszPublisherName
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
     char bufEndpoint[1024];
     size_t bufEndpointlen = sizeof(bufEndpoint);
@@ -87,6 +94,7 @@ ZMQClient::make_publisher(
             IN void *context) -> void
 #pragma clang diagnostic pop
     {
+        GV_PRINT(ENTRY, "");
         static_cast<ZMQClient *>(context)->register_callback(
                 serviceRef,
                 flags,
@@ -94,6 +102,7 @@ ZMQClient::make_publisher(
                 pszServiceName,
                 pszRegType,
                 pszDomainName);
+        GV_PRINT(EXIT, "");
     };
 
     lock_guard<mutex> lg(_mtx);
@@ -117,6 +126,7 @@ ZMQClient::make_publisher(
     //sleep_for(seconds(10));
 
 //out:
+    GV_PRINT(EXIT, "");
     return error;
 
 //error:
@@ -138,6 +148,7 @@ ZMQClient::resolve_callback(
     IN unsigned char const *pszTxtRecord
 #pragma clang diagnostic pop
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     lock_guard<mutex> lg(_mtx);
     char serviceBuf[kDNSServiceMaxServiceName]; // Includes space for '\0'
     char addressBuf[g_ulMaxAddrLen];
@@ -156,6 +167,7 @@ ZMQClient::resolve_callback(
         _mapSubscribers.at(serviceBuf).bSubscribed = true;
         _cv.notify_all();
     }
+    GV_PRINT(EXIT, "");
 }
 
 GV_ERROR
@@ -163,6 +175,7 @@ ZMQClient::make_subscriber(
     IN ZeroconfClient &zeroconfClient,
     IN char const *pszSubscriberName
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
     unique_ptr<socket_t> upSubscriber = make_unique<socket_t>(_context, ZMQ_SUB);
 
@@ -181,6 +194,7 @@ ZMQClient::make_subscriber(
             IN void *context) -> void
 #pragma clang diagnostic pop
     {
+        GV_PRINT(ENTRY, "");
         static_cast<ZMQClient *>(context)->resolve_callback(
                 serviceRef,
                 flags,
@@ -191,6 +205,7 @@ ZMQClient::make_subscriber(
                 uPort,
                 uTxtLen,
                 pszTxtRecord);
+        GV_PRINT(EXIT, "");
     };
 
     lock_guard<mutex> lg(_mtx);
@@ -204,6 +219,7 @@ ZMQClient::make_subscriber(
     _mapSubscribers.emplace(pszSubscriberName, &upSubscriber);
 
 //out:
+    GV_PRINT(EXIT, "");
     return error;
 
 //error:
@@ -216,6 +232,7 @@ ZMQClient::publish_message(
     IN void *pMsg,
     IN size_t msgLen
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
 
     if (_mapPublishers.end() == _mapPublishers.find(pszPublisherName)) {
@@ -228,6 +245,7 @@ ZMQClient::publish_message(
     }
 
 out:
+    GV_PRINT(EXIT, "");
     return error;
 
 error:
@@ -239,6 +257,7 @@ ZMQClient::get_next_message(
     IN char const *pszSubscriberName,
     OUT zmq::message_t *pMsg
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
     unique_lock<mutex> ul(_mtx);
     bool done = false;
@@ -261,6 +280,7 @@ ZMQClient::get_next_message(
 
 
 out:
+    GV_PRINT(EXIT, "");
     return error;
 
 error:

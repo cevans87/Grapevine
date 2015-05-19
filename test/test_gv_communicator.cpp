@@ -25,20 +25,20 @@ TEST(communicator, sends_and_receives) {
     }
     unique_lock<mutex> ulOuter(*g_pMtx);
 
-    com.make_publisher("communicatorTest");
-    com.make_subscriber("communicatorTest");
+    com.make_publisher("communicator_Test");
+    com.make_subscriber("communicator_Test");
 
     std::function<void(void)> delay_publish = [&com, &pszMsg]() {
         unique_lock<mutex> ulInner(*g_pMtx, std::defer_lock);
         while (!ulInner.try_lock()) {
             sleep_for(seconds(2));
-            com.publish_message("communicatorTest", pszMsg);
+            com.publish_message("communicator_Test", pszMsg);
             printf("publishing\n");
         }
         delete g_pMtx;
     };
     std::future<void> fut = std::async(std::launch::async, delay_publish);
 
-    com.get_next_message("communicatorTest", &msg);
+    com.get_next_message("communicator_Test", &msg);
     ulOuter.unlock();
 }

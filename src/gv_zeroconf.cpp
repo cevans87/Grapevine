@@ -21,6 +21,7 @@ namespace grapevine {
 
 ZeroconfClient::ZeroconfClient(
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     _upchAddServiceRef = make_unique<CHServiceRef>(_ukChannelSize);
 
     _upchRemoveServiceRef = make_unique<CHServiceRef>(_ukChannelSize);
@@ -36,6 +37,7 @@ ZeroconfClient::ZeroconfClient(
 
 ZeroconfClient::~ZeroconfClient(
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_PRINT(INFO, "Trying to die\n");
 
     _upchAddServiceRef->close();
@@ -56,16 +58,8 @@ ZeroconfClient::browse_callback(
     IN void *context
 #pragma clang diagnostic pop
 ) noexcept {
-    ZeroconfClient *self = reinterpret_cast<ZeroconfClient *>(context);
-    GV_PRINT(INFO, "Browse callback initiated");
-    if (nullptr == self) {
-        GV_PRINT(INFO, "No context given.");
-        return;
-    }
-    //else if (nullptr == self->_callback) {
-    //    GV_PRINT(INFO, "No callback set.");
-    //    return;
-    //}
+    GV_PRINT(ENTRY, "");
+    GV_PRINT(EXIT, "");
 }
 
 // FIXME remove this function and just require it in the enableBrowse function.
@@ -73,7 +67,9 @@ GV_ERROR
 ZeroconfClient::set_browse_callback(
     IN gv_browse_callback callback
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     _browseCallback = callback;
+    GV_PRINT(EXIT, "");
     return GV_ERROR::SUCCESS;
 }
 
@@ -91,6 +87,7 @@ ZeroconfClient::add_register_callback(
     IN gv_register_callback callback,
     IN void *context
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
@@ -126,6 +123,7 @@ ZeroconfClient::add_register_callback(
     error = _upchAddServiceRef->put(&upServiceRef);
     GV_BAIL(error, ERROR);
 out:
+    GV_PRINT(EXIT, "");
     return error;
 
 error:
@@ -139,6 +137,7 @@ ZeroconfClient::add_resolve_callback(
     IN gv_resolve_callback callback,
     IN void *context
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
@@ -167,6 +166,7 @@ ZeroconfClient::add_resolve_callback(
     error = _upchAddServiceRef->put(&upServiceRef);
     GV_BAIL(error, ERROR);
 out:
+    GV_PRINT(EXIT, "");
     return error;
 
 error:
@@ -176,6 +176,7 @@ error:
 GV_ERROR
 ZeroconfClient::enable_browse(
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
     DNSServiceErrorType serviceError;
     DNSServiceRef serviceRef = nullptr;
@@ -198,6 +199,7 @@ ZeroconfClient::enable_browse(
     GV_BAIL(error, ERROR);
 
 out:
+    GV_PRINT(EXIT, "");
     return error;
 
 error:
@@ -209,6 +211,7 @@ ZeroconfClient::handle_events(
     IN UPCHServiceRef const *pupchAddServiceRef,
     IN UPCHServiceRef const *pupchRemoveServiceRef
 ) noexcept {
+    GV_PRINT(ENTRY, "");
     GV_ERROR error = GV_ERROR::SUCCESS;
     int fdAddRef = -1;
     int fdRemoveRef = -1;
@@ -281,6 +284,7 @@ out:
         (*pupchRemoveServiceRef)->close_notify_data_available_fd(&fdRemoveRef);
     }
     GV_PRINT(WARNING, "Returning from handler thread");
+    GV_PRINT(EXIT, "");
     return error;
 
 error:
