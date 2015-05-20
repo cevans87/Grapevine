@@ -90,6 +90,15 @@ char const * const gv_error_strings[] =
      GV_ERROR_SYMBOLS
 };
 
+#define GV_DEBUG_BACKGROUND(severity) \
+        (GV_DEBUG::severity == GV_DEBUG::DEBUG)     ? ";33"     :           \
+        (GV_DEBUG::severity == GV_DEBUG::WARNING)   ? ";33"     :           \
+        (GV_DEBUG::severity == GV_DEBUG::INFO)      ? ";32"     :           \
+        (GV_DEBUG::severity == GV_DEBUG::ERROR)     ? ";31"     :           \
+        (GV_DEBUG::severity == GV_DEBUG::SEVERE)    ? ";41;32"  :           \
+        (GV_DEBUG::severity == GV_DEBUG::ENTRY)     ? ";34"     :           \
+        (GV_DEBUG::severity == GV_DEBUG::EXIT)      ? ";35"     : ""        \
+
 #endif // GV_DEBUG_LEVEL
 
 #if GV_DEBUG_LEVEL < 1
@@ -102,8 +111,9 @@ char const * const gv_error_strings[] =
 #define GV_PRINT(severity, fmt, ...)                                        \
     do {                                                                    \
         if (GV_DEBUG_LEVEL <= static_cast<int>(GV_DEBUG::severity)) {       \
-            fprintf(stderr, "%s:%d:%s(): %s: " fmt "\n",                    \
+            fprintf(stderr, "%s:%d:%s(): \x1b[1%sm%s\x1b[0m: " fmt "\n",    \
                     GV_FILE, __LINE__, __func__,                            \
+                    GV_DEBUG_BACKGROUND(severity),                          \
                     gv_debug_strings[static_cast<int>(GV_DEBUG::severity)], \
                     ##__VA_ARGS__);                                         \
         }                                                                   \
